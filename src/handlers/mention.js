@@ -18,7 +18,7 @@ const HELP_TEXT = [
   '🎨 *Alex* — Design no Canva, peças visuais',
   '📐 *Paulo* — Material instrucional, aulas da mentoria',
   '📈 *Lens* — Métricas, dados, Instagram e TikTok',
-  '🤝 *Assistente* — Agenda, reuniões, delegações',
+  '🤝 *Mariah* — Agenda pessoal, pagamentos, reuniões, delegações',
   '',
   'Como usar: `@Squad TNeris Bot Jay, qual é o status do pipeline?`',
 ].join('\n');
