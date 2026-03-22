@@ -1,5 +1,6 @@
 const { detectAgent, AGENTS } = require('../agents');
 const { callClaude } = require('../claude');
+const { fetchBrandKit } = require('../notion');
 
 const APROVACOES_CHANNEL = 'C061GRE0LUA';
 
@@ -85,7 +86,16 @@ async function handleMention({ event, client, logger }) {
   }
 
   try {
-    const response = await callClaude(agent.system, rawText);
+    // Alex busca o brand kit atualizado do Notion antes de responder
+    let systemPrompt = agent.system;
+    if (agent.key === 'alex') {
+      const brandKit = await fetchBrandKit();
+      if (brandKit) {
+        systemPrompt = `${agent.system}\n\nBRAND KIT ATUALIZADO DO NOTION:\n${brandKit}`;
+      }
+    }
+
+    const response = await callClaude(systemPrompt, rawText);
     const agentHeader = `${agent.icon} *${agent.title}* — ${agent.role}`;
 
     // Fluxo especial para People: revisão do Vega antes de ir para #aprovacoes
