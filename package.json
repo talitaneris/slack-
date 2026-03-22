@@ -1,0 +1,22 @@
+{
+  "name": "squad-tneris-bot",
+  "version": "1.0.0",
+  "description": "Squad TNeris — Slack Bot com 12 agentes de IA",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.0",
+    "@slack/bolt": "^3.17.0",
+    "dotenv": "^16.4.0",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
