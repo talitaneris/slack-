@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TNeris — Curadoria</title>
+  <style>
+    :root {
+      --midnight: #122C4F;
+      --midnight-light: #1a3d6e;
+      --pearl: #FBF9E4;
+      --ocean: #5B88B2;
+      --noir: #0a0a0a;
+      --white: #ffffff;
+      --gray: #8a9bb0;
+      --card-bg: #1a2f4a;
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--midnight);
+      color: var(--white);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--noir);
+      border-bottom: 1px solid rgba(91,136,178,0.25);
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-mark {
+      width: 38px;
+      height: 38px;
+      background: var(--ocean);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 900;
+      color: var(--pearl);
+      letter-spacing: -1px;
+    }
+
+    .logo-text h1 {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--pearl);
+      letter-spacing: 0.5px;
+    }
+
+    .logo-text span {
+      font-size: 12px;
+      color: var(--gray);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    #last-update {
+      font-size: 12px;
+      color: var(--gray);
+    }
+
+    #refresh-btn {
+      background: transparent;
+      border: 1px solid var(--ocean);
+      color: var(--ocean);
+      padding: 7px 16px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    #refresh-btn:hover { background: var(--ocean); color: var(--white); }
+    #refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── TABS ── */
+    .tabs-wrapper {
+      background: var(--noir);
+      border-bottom: 1px solid rgba(91,136,178,0.15);
+      padding: 0 32px;
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .tabs-wrapper::-webkit-scrollbar { display: none; }
+
+    .tab {
+      padding: 14px 20px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      white-space: nowrap;
+      transition: all .2s;
+      letter-spacing: 0.3px;
+    }
+
+    .tab:hover { color: var(--white); }
+
+    .tab.active {
+      color: var(--white);
+      border-bottom-color: var(--tab-color, var(--ocean));
+    }
+
+    /* ── MAIN ── */
+    main {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 32px;
+    }
+
+    /* ── LOADING / ERROR ── */
+    .state-msg {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--gray);
+    }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid rgba(91,136,178,0.2);
+      border-top-color: var(--ocean);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── GRID ── */
+    .articles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+    }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid rgba(91,136,178,0.15);
+      border-radius: var(--radius);
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: border-color .2s, transform .15s;
+      animation: fadeIn .35s ease;
+    }
+
+    .card:hover {
+      border-color: rgba(91,136,178,0.4);
+      transform: translateY(-2px);
+    }
+
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .source-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 4px;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      background: rgba(91,136,178,0.15);
+      color: var(--ocean);
+    }
+
+    .card-date {
+      font-size: 11px;
+      color: var(--gray);
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--pearl);
+      line-height: 1.45;
+      letter-spacing: -0.1px;
+    }
+
+    .card-summary {
+      font-size: 13px;
+      color: #8fa8c4;
+      line-height: 1.6;
+      flex: 1;
+    }
+
+    .card-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ocean);
+      text-decoration: none;
+      margin-top: 4px;
+      transition: color .15s;
+    }
+
+    .card-link:hover { color: var(--pearl); }
+
+    /* ── CATEGORY HEADER ── */
+    .cat-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .cat-icon { font-size: 22px; }
+
+    .cat-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--pearl);
+    }
+
+    .cat-count {
+      font-size: 12px;
+      color: var(--gray);
+      margin-left: 4px;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 600px) {
+      header { padding: 16px 20px; }
+      main { padding: 20px; }
+      .tabs-wrapper { padding: 0 16px; }
+      .articles-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">TN</div>
+    <div class="logo-text">
+      <h1>TNeris Curadoria</h1>
+      <span>Pauta quente do dia</span>
+    </div>
+  </div>
+  <div class="header-meta">
+    <span id="last-update">Carregando...</span>
+    <button id="refresh-btn" onclick="loadNews(true)">↻ Atualizar</button>
+  </div>
+</header>
+
+<div class="tabs-wrapper" id="tabs"></div>
+
+<main id="main">
+  <div class="state-msg">
+    <div class="spinner"></div>
+    <p>Buscando as notícias do dia...</p>
+  </div>
+</main>
+
+<script>
+  let newsData = null;
+  let activeTab = null;
+
+  function formatDate(dateStr) {
+    if (!dateStr) return '';
+    try {
+      return new Date(dateStr).toLocaleString('pt-BR', {
+        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+      });
+    } catch { return ''; }
+  }
+
+  function renderTabs(categories) {
+    const wrapper = document.getElementById('tabs');
+    wrapper.innerHTML = '';
+    categories.forEach((cat, i) => {
+      const tab = document.createElement('div');
+      tab.className = 'tab' + (i === 0 ? ' active' : '');
+      tab.style.setProperty('--tab-color', cat.color);
+      tab.textContent = cat.icon + '  ' + cat.label;
+      tab.dataset.key = cat.key;
+      tab.onclick = () => switchTab(cat.key, categories);
+      wrapper.appendChild(tab);
+    });
+  }
+
+  function switchTab(key, categories) {
+    activeTab = key;
+    document.querySelectorAll('.tab').forEach(t => {
+      const isActive = t.dataset.key === key;
+      t.classList.toggle('active', isActive);
+      if (isActive) {
+        const cat = categories.find(c => c.key === key);
+        t.style.setProperty('--tab-color', cat?.color || '#5B88B2');
+      }
+    });
+    renderArticles(key);
+  }
+
+  function renderArticles(key) {
+    const main = document.getElementById('main');
+    const articles = newsData?.data?.[key] || [];
+    const categories = newsData?.categories || [];
+    const cat = categories.find(c => c.key === key);
+
+    if (!articles.length) {
+      main.innerHTML = `<div class="state-msg"><p>Nenhum artigo disponível para esta categoria.</p></div>`;
+      return;
+    }
+
+    const cards = articles.map(a => `
+      <div class="card">
+        <div class="card-meta">
+          <span class="source-badge">${a.source}</span>
+          <span class="card-date">${formatDate(a.date)}</span>
+        </div>
+        <div class="card-title">${a.title}</div>
+        ${a.summary ? `<div class="card-summary">${a.summary}${a.summary.length >= 200 ? '…' : ''}</div>` : ''}
+        <a class="card-link" href="${a.link}" target="_blank" rel="noopener">Ler artigo completo →</a>
+      </div>
+    `).join('');
+
+    main.innerHTML = `
+      <div class="cat-header">
+        <span class="cat-icon">${cat?.icon || ''}</span>
+        <span class="cat-title">${cat?.label || ''}</span>
+        <span class="cat-count">${articles.length} artigos</span>
+      </div>
+      <div class="articles-grid">${cards}</div>
+    `;
+  }
+
+  async function loadNews(force = false) {
+    const btn = document.getElementById('refresh-btn');
+    const updateEl = document.getElementById('last-update');
+    btn.disabled = true;
+    btn.textContent = '↻ Buscando...';
+
+    try {
+      const url = force ? '/curadoria/api?force=1' : '/curadoria/api';
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Falha na API');
+      newsData = await res.json();
+
+      updateEl.textContent = newsData.lastUpdate
+        ? '🟢 Atualizado: ' + newsData.lastUpdate
+        : '⚪ Sem dados';
+
+      renderTabs(newsData.categories);
+      const firstKey = newsData.categories[0]?.key;
+      if (firstKey) switchTab(firstKey, newsData.categories);
+
+    } catch (err) {
+      document.getElementById('main').innerHTML =
+        `<div class="state-msg"><p>⚠️ Erro ao carregar notícias. Tente novamente.</p></div>`;
+      updateEl.textContent = '❌ Erro ao carregar';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '↻ Atualizar';
+    }
+  }
+
+  loadNews();
+</script>
+</body>
+</html>

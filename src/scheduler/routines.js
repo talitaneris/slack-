@@ -1,17 +1,19 @@
 const cron = require('node-cron');
 const { callClaude } = require('../claude');
 const { AGENTS } = require('../agents');
+const { refreshAll } = require('../curadoria/crawler');
 
 // IDs dos canais do Slack
 const CHANNELS = {
-  talita: 'C0AMYHFKY93',
+  talita:     'C0AMYHFKY93',
   squadgeral: 'C0AN20EFA02',
-  marketing: 'C0AMR167B4L',
-  vendas: 'C0AMJ13D85T',
-  produto: 'C0AMR126AN8',
-  gestao: 'C03PX3KKTJS',
+  marketing:  'C0AMR167B4L',
+  vendas:     'C0AMJ13D85T',
+  produto:    'C0AMR126AN8',
+  gestao:     'C03PX3KKTJS',
   financeiro: 'C0AMZU5RFM4',
-  alertas: 'C03PY24RJJJ',
+  alertas:    'C03PY24RJJJ',
+  conselho:   process.env.SLACK_CHANNEL_CONSELHO || 'C03PX3KKTJS', // ← cole o ID do #conselho aqui ou sete SLACK_CHANNEL_CONSELHO no Render
 };
 
 // Rotinas diárias — rodam todo dia às 8h BRT
@@ -147,31 +149,59 @@ async function runRoutine(routine, slackClient, logger) {
 
 /**
  * Inicializa o scheduler.
- * Roda todo dia às 8h (horário de Brasília).
  */
 function initScheduler(slackClient, logger) {
-  cron.schedule(
-    '0 8 * * *',
-    async () => {
-      const now = new Date();
-      const dayOfWeek = now.getDay(); // 0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sab
-      logger.info(`🕗 Rodando rotinas do dia ${dayOfWeek} (${now.toISOString()})`);
 
-      // Rotinas diárias — sempre
-      for (const routine of DAILY_ROUTINES) {
-        await runRoutine(routine, slackClient, logger);
-      }
+  // ── 8h BRT: rotinas diárias do squad ──
+  cron.schedule('0 8 * * *', async () => {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    logger.info(`🕗 Rodando rotinas do dia ${dayOfWeek} (${now.toISOString()})`);
 
-      // Rotinas específicas do dia
-      const weeklyRoutines = WEEKLY_ROUTINES[dayOfWeek] || [];
-      for (const routine of weeklyRoutines) {
-        await runRoutine(routine, slackClient, logger);
-      }
-    },
-    { timezone: 'America/Sao_Paulo' }
-  );
+    for (const routine of DAILY_ROUTINES) {
+      await runRoutine(routine, slackClient, logger);
+    }
 
-  logger.info('🗓️ Scheduler iniciado — rotinas rodam todo dia às 8h BRT');
+    const weeklyRoutines = WEEKLY_ROUTINES[dayOfWeek] || [];
+    for (const routine of weeklyRoutines) {
+      await runRoutine(routine, slackClient, logger);
+    }
+  }, { timezone: 'America/Sao_Paulo' });
+
+  // ── 9h BRT: atualiza curadoria de notícias ──
+  cron.schedule('0 9 * * *', async () => {
+    logger.info('📰 Cron 9h — atualizando curadoria');
+    try {
+      await refreshAll();
+      logger.info('✅ Curadoria atualizada');
+    } catch (err) {
+      logger.error('❌ Erro na curadoria:', err.message);
+    }
+  }, { timezone: 'America/Sao_Paulo' });
+
+  // ── 9h30 toda segunda: Conselho Estratégico com Jay ──
+  cron.schedule('30 9 * * 1', async () => {
+    logger.info('📊 Cron 9h30 segunda — Conselho Estratégico');
+    await runRoutine({
+      agent:     AGENTS.jay,
+      channel:   CHANNELS.conselho,
+      maxTokens: 700,
+      prompt: `É segunda-feira, 9h30. Conduza o Conselho Estratégico Semanal da TNeris.
+Formato obrigatório:
+1. 📊 JAY (você) — Números da semana: MRR, conversões, renovações pendentes, gap vs. meta
+2. 💡 JAY ABRAHAM — Capital oculto: o que já existe e não está sendo explorado? Qual alavanca (clientes / ticket / frequência) está mais fraca?
+3. 💰 ALEX HORMOZI — A oferta está forte o suficiente? Equação de valor, o que trim, o que stack?
+4. 🎯 RUSSELL BRUNSON — Saúde do funil: temperatura do tráfego, onde está perdendo lead, Value Ladder sendo usado?
+5. 📱 GARY VEE — Atenção e conteúdo: onde está a atenção do ICP essa semana? O que está gerando DM qualificada?
+
+Feche com:
+→ *1 decisão estratégica da semana*
+→ *3 ações táticas para executar antes da próxima segunda*
+→ *1 número para monitorar*`,
+    }, slackClient, logger);
+  }, { timezone: 'America/Sao_Paulo' });
+
+  logger.info('🗓️ Scheduler iniciado — 8h rotinas | 9h curadoria | 9h30 seg conselho');
 }
 
 module.exports = { initScheduler };

@@ -1,9 +1,11 @@
 require('dotenv').config();
 
 const https = require('https');
+const path  = require('path');
 const { App, ExpressReceiver } = require('@slack/bolt');
 const { handleMention } = require('./handlers/mention');
 const { initScheduler } = require('./scheduler/routines');
+const { refreshAll, getCache, isCacheStale } = require('./curadoria/crawler');
 
 // Validação das variáveis de ambiente obrigatórias
 const REQUIRED_ENV = ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET', 'ANTHROPIC_API_KEY'];
@@ -22,6 +24,20 @@ const receiver = new ExpressReceiver({
 // Health check — Render usa essa rota para verificar se o serviço está vivo
 receiver.router.get('/', (req, res) => {
   res.status(200).send('Squad TNeris Bot — online ✅');
+});
+
+// Curadoria — site de notícias
+receiver.router.get('/curadoria', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/curadoria.html'));
+});
+
+receiver.router.get('/curadoria/api', async (req, res) => {
+  try {
+    if (isCacheStale() || req.query.force) await refreshAll();
+    res.json(getCache());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Inicializa o app do Slack com Bolt

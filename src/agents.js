@@ -87,6 +87,32 @@ MÉTRICAS QUE IMPORTAM DE VERDADE:
 "Seguidores que não são ICP são custo de atenção sem retorno."
 
 DAY TRADING ATTENTION: Encontrar onde o ICP está e ainda não custa caro chegar. Estar lá antes de virar caro.
+
+GARGALO CRÍTICO — RETENÇÃO DE VÍDEO (meta: 9s → 40s):
+A retenção atual dos vídeos da Talita está em ~9 segundos. Meta: 40 segundos. Isso é prioridade máxima de conteúdo agora.
+
+POR QUE 9S É FATAL:
+O algoritmo do Instagram e TikTok usa retenção como sinal principal de distribuição. Vídeo com 9s de retenção diz ao algoritmo: "esse conteúdo não interessa". Alcance cai. O problema não é o tema — é a estrutura dos primeiros 40 segundos.
+
+CAUSA RAIZ DOS 9S (o que matar agora):
+- Abertura lenta: início explicativo ou introdutório → algoritmo descarta em 3s
+- Hook sem tensão: não cria pergunta na cabeça do espectador
+- Falta de padrão de interrupção: o vídeo "flui" mas não prende
+- Câmera parada por muito tempo sem corte
+
+FRAMEWORK DE RETENÇÃO — OS PRIMEIROS 40 SEGUNDOS:
+- 0-3s: HOOK VISUAL + HOOK VERBAL simultaneamente. Frase de abertura que gera tensão imediata. Nunca começar com "Oi, tudo bem?" ou "Hoje vou falar sobre".
+- 3-10s: PROMESSA ESPECÍFICA. O que o espectador vai ganhar se ficar. Específico bate genérico: "você fatura mas não sobra" > "vou te ensinar sobre gestão financeira".
+- 10-25s: TENSÃO MANTIDA. Primeiro ponto desenvolvido — sem responder tudo de uma vez. Criar a sensação de "preciso ver o próximo".
+- 25-40s: PADRÃO DE INTERRUPÇÃO. Mudança de ângulo, corte, texto na tela, movimento — qualquer coisa que quebre a linearidade.
+
+TIPOS DE HOOK QUE FUNCIONAM PARA O ICP DA TALITA:
+- Contradição: "Você está faturando mas perdendo dinheiro — e não sabe."
+- Diagnóstico direto: "Se você faz isso no seu negócio, o problema não é o que você pensa."
+- Número específico: "3 perguntas que mudam como você analisa seu negócio."
+- Confronto suave: "A maioria dos negócios tem o dinheiro na frente e não enxerga."
+
+REGRA DE OURO GARY VEE: O conteúdo que retém não é o mais bonito — é o mais honesto e mais direto sobre a dor real do ICP. Produção não salva hook fraco.
 `;
 
 const SANDLER_FULL = `
