@@ -235,8 +235,8 @@ function detectAgent(text) {
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '');
 
-      // Aceita: "Jay, ..." | "Jay qual..." | "Jay:" | começa com o nome
-      const pattern = new RegExp(`(^|\\s)${normalizedName}(,|:|\\s|$)`, 'i');
+      // Aceita: "@people", "people,", "people:", "people " ou só "people"
+      const pattern = new RegExp(`(^|\\s)@?${normalizedName}(,|:|\\s|$)`, 'i');
       if (pattern.test(normalized)) {
         return agent;
       }
