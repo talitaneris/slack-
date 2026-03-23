@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TNeris — Escritório Virtual</title>
+  <style>
+    :root {
+      --midnight: #0f1f35;
+      --midnight-mid: #122C4F;
+      --midnight-light: #1a3d6e;
+      --pearl: #FBF9E4;
+      --ocean: #5B88B2;
+      --ocean-light: #7aa8cc;
+      --gold: #c9a84c;
+      --green: #3ecf8e;
+      --red: #f66;
+      --gray: #8a9bb0;
+      --card-bg: #162840;
+      --card-border: #1e3a5a;
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--midnight);
+      color: #e8f0f8;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: linear-gradient(135deg, #0a1829 0%, #122C4F 100%);
+      border-bottom: 1px solid var(--card-border);
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 14px; }
+
+    .logo-mark {
+      width: 40px; height: 40px;
+      background: var(--gold);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: 800; color: #0a1829;
+    }
+
+    h1 { font-size: 18px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
+    .subtitle { font-size: 12px; color: var(--gray); margin-top: 2px; }
+
+    .status-badge {
+      display: flex; align-items: center; gap: 7px;
+      background: rgba(62,207,142,0.12);
+      border: 1px solid rgba(62,207,142,0.3);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 12px; font-weight: 600; color: var(--green);
+    }
+
+    .status-dot {
+      width: 7px; height: 7px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ── MAIN ── */
+    main { padding: 32px; max-width: 1300px; margin: 0 auto; }
+
+    /* ── HIERARQUIA ── */
+    .org-label {
+      font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase; color: var(--gray);
+      margin-bottom: 14px; padding-left: 4px;
+    }
+
+    /* ── TALITA (topo) ── */
+    .talita-row {
+      display: flex; justify-content: center;
+      margin-bottom: 8px;
+    }
+
+    .talita-card {
+      background: linear-gradient(135deg, #1a3060 0%, #0e2344 100%);
+      border: 2px solid var(--gold);
+      border-radius: 18px;
+      padding: 18px 32px;
+      display: flex; align-items: center; gap: 16px;
+      box-shadow: 0 0 40px rgba(201,168,76,0.15);
+      min-width: 280px;
+    }
+
+    .talita-icon {
+      width: 52px; height: 52px;
+      background: var(--gold);
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px;
+    }
+
+    .talita-info h3 { font-size: 17px; font-weight: 700; color: #fff; }
+    .talita-info p { font-size: 12px; color: var(--gold); font-weight: 500; margin-top: 3px; }
+
+    /* ── LINHA CONECTORA ── */
+    .connector {
+      display: flex; justify-content: center;
+      margin: 0 0 8px;
+    }
+    .connector-line {
+      width: 2px; height: 28px;
+      background: linear-gradient(to bottom, var(--gold), var(--ocean));
+    }
+
+    /* ── GRID DE ANDARES ── */
+    .floor {
+      margin-bottom: 32px;
+    }
+
+    .floor-label {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .floor-label .fl-icon {
+      font-size: 16px;
+    }
+
+    .floor-label h2 {
+      font-size: 13px; font-weight: 700; color: var(--ocean-light);
+      letter-spacing: 0.5px;
+    }
+
+    .floor-label .fl-line {
+      flex: 1; height: 1px;
+      background: linear-gradient(to right, var(--card-border), transparent);
+    }
+
+    .agents-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+    }
+
+    /* ── AGENT CARD ── */
+    .agent-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 18px;
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+      cursor: default;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .agent-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+
+    .agent-card.area-receita::before { background: var(--gold); }
+    .agent-card.area-marketing::before { background: #a78bfa; }
+    .agent-card.area-vendas::before { background: #f97316; }
+    .agent-card.area-cs::before { background: var(--green); }
+    .agent-card.area-ops::before { background: var(--ocean); }
+    .agent-card.area-dados::before { background: #06b6d4; }
+    .agent-card.area-design::before { background: #ec4899; }
+    .agent-card.area-produto::before { background: #8b5cf6; }
+    .agent-card.area-financeiro::before { background: #22c55e; }
+    .agent-card.area-pessoal::before { background: #f59e0b; }
+
+    .agent-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+      border-color: var(--ocean);
+    }
+
+    .agent-header {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .agent-icon {
+      width: 42px; height: 42px;
+      border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .agent-card.area-receita .agent-icon { background: rgba(201,168,76,0.15); }
+    .agent-card.area-marketing .agent-icon { background: rgba(167,139,250,0.15); }
+    .agent-card.area-vendas .agent-icon { background: rgba(249,115,22,0.15); }
+    .agent-card.area-cs .agent-icon { background: rgba(62,207,142,0.15); }
+    .agent-card.area-ops .agent-icon { background: rgba(91,136,178,0.15); }
+    .agent-card.area-dados .agent-icon { background: rgba(6,182,212,0.15); }
+    .agent-card.area-design .agent-icon { background: rgba(236,72,153,0.15); }
+    .agent-card.area-produto .agent-icon { background: rgba(139,92,246,0.15); }
+    .agent-card.area-financeiro .agent-icon { background: rgba(34,197,94,0.15); }
+    .agent-card.area-pessoal .agent-icon { background: rgba(245,158,11,0.15); }
+
+    .agent-meta h3 { font-size: 15px; font-weight: 700; color: #fff; }
+    .agent-meta .role { font-size: 11px; color: var(--gray); margin-top: 2px; }
+
+    .online-pill {
+      margin-left: auto;
+      display: flex; align-items: center; gap: 5px;
+      background: rgba(62,207,142,0.1);
+      border: 1px solid rgba(62,207,142,0.25);
+      border-radius: 20px;
+      padding: 3px 8px;
+      font-size: 10px; font-weight: 600; color: var(--green);
+    }
+
+    .online-dot {
+      width: 5px; height: 5px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    .agent-desc {
+      font-size: 12px; color: #8fa8c4; line-height: 1.5;
+      margin-bottom: 12px;
+    }
+
+    .agent-channels {
+      display: flex; flex-wrap: wrap; gap: 5px;
+    }
+
+    .channel-tag {
+      background: rgba(91,136,178,0.12);
+      border: 1px solid rgba(91,136,178,0.2);
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: 10px; color: var(--ocean-light);
+      font-family: monospace;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      text-align: center;
+      padding: 28px;
+      font-size: 12px; color: var(--gray);
+      border-top: 1px solid var(--card-border);
+      margin-top: 16px;
+    }
+
+    footer a { color: var(--ocean-light); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── RESP ── */
+    @media (max-width: 600px) {
+      main { padding: 16px; }
+      header { padding: 14px 16px; }
+      .talita-card { min-width: unset; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="logo-mark">T</div>
+    <div>
+      <h1>Escritório Virtual — TNeris</h1>
+      <div class="subtitle">Squad de IA · 12 agentes ativos</div>
+    </div>
+  </div>
+  <div class="status-badge">
+    <div class="status-dot"></div>
+    Online · Render Cloud
+  </div>
+</header>
+
+<main>
+
+  <!-- TALITA -->
+  <div class="talita-row">
+    <div class="talita-card">
+      <div class="talita-icon">👑</div>
+      <div class="talita-info">
+        <h3>Talita Neris</h3>
+        <p>Fundadora · A Tribus · TNeris</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="connector"><div class="connector-line"></div></div>
+
+  <!-- ANDAR 1: Estratégia / Receita -->
+  <div class="floor">
+    <div class="floor-label">
+      <span class="fl-icon">🏢</span>
+      <h2>Estratégia &amp; Receita</h2>
+      <div class="fl-line"></div>
+    </div>
+    <div class="agents-grid">
+
+      <div class="agent-card area-receita">
+        <div class="agent-header">
+          <div class="agent-icon">📊</div>
+          <div class="agent-meta">
+            <h3>Jay</h3>
+            <div class="role">Gestor de Receita</div>
+          </div>
+          <div class="online-pill"><div class="online-dot"></div>online</div>
+        </div>
+        <div class="agent-desc">Faturamento, pipeline, campanhas e metas. Metodologia Jay Abraham.</div>
+        <div class="agent-channels">
+          <span class="channel-tag">#gestao</span>
+          <span class="channel-tag">#vendas</span>
+        </div>
+      </div>
+
+      <div class="agent-card area-dados">
+        <div class="agent-header">
+          <div class="agent-icon">📈</div>
+          <div class="agent-meta">
+            <h3>Lens</h3>
+            <div class="role">Estrategista de Dados</div>
+          </div>
+          <div class="online-pill"><div class="online-dot"></div>online</div>
+        </div>
+        <div class="agent-desc">Métricas, comportamento, Instagram e TikTok. Decisão baseada em dado.</div>
+        <div class="agent-channels">
+          <span class="channel-tag">#gestao</span>
+        </div>
+      </div>
+
+      <div class="agent-card area-pessoal">
+        <div class="agent-header">
+          <div class="agent-icon">🤝</div>
+          <div class="agent-meta">
+            <h3>Mariah</h3>
+            <div class="role">Assistente Pessoal</div>
+          </div>
+          <div class="online-pill"><div class="online-dot"></div>online</div>
+        </div>
+        <div class="agent-desc">Agenda, filtro de demandas, briefing de reunião e delegação.</div>
+        <div class="agent-channels">
+          <span class="channel-tag">#talita</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ANDAR 2: Marketing / Marca -->
+  <div class="floor">
+    <div class="floor-label">
+      <span class="fl-icon">🎯</span>
+      <h2>Marketing &amp; Marca</h2>
+      <div class="fl-line"></div>
+    </div>
+    <div class="agents-grid">
+
+      <div class="agent-card area-marketing">
+        <div class="agent-header">
+          <div class="agent-icon">⭐</div>
+          <div class="agent-meta">
+            <h3>Vega</h3>
+            <div class="role">Estrategista de Marca</div>
+          </div>
+          <div class="online-pill"><div class="online-dot"></div>online</div>
+        </div>
+        <div class="agent-desc">Posicionamento, autoridade, audiência e comunicação estratégica.</div>
+        <div class="agent-channels">
+          <span class="channel-tag">#marketing</span>
+        </div>
+      </div>
+
+      <div class="agent-card area-marketing">
+        <div class="agent-header">
+          <div class="agent-icon">✍️</div>
+          <div class="agent-meta">
+            <h3>People</h3>
+            <div class="role">Social Media / Conteúdo</div>
+          </div>
+          <div class="online-pill"><div class="online-dot"></div>online</div>
+        </div>
+        <div class="agent-desc">Roteiros, carrosséis, calendário editorial e conteúdo estratégico.</div>
+        <div class="agent-channels">
+          <span class="channel-tag">#marketing</span>
+          <span class="channel-tag">#aprovacoes</span>
+        </div>
+      </div>
+
+      <div class="agent-card area-design">
+        <div class="agent-header">
+          <div class="agent-icon">🎨</div>
+          <div class="agent-meta">
+            <h3>Alex</h3>
+            <div class="role">Designer da Marca</div>
+          </div>
+          <div class="online-pill"><div class="online-dot"></div>online</div>
+        </div>
+        <div class="agent-desc">Carrosséis, apresentações, materiais educacionais e identidade visual.</div>
+        <div class="agent-channels">
+          <span class="channel-tag">#marketing</span>
+          <span class="channel-tag">#aprovacoes</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ANDAR 3: Vendas -->
+  <div class="floor">
+    <div class="floor-label">
+      <span class="fl-icon">💼</span>
+      <h2>Vendas &amp; Pipeline</h2>
+      <div class="fl-line"></div>
+    </div>
+    <div class="agents-grid">
+
+      <div class="agent-card area-vendas">
+        <div class="agent-header">
+          <div class="agent-icon">🎯</div>
+          <div class="agent-meta">
+            <h3>Lia</h3>
+            <div class="role">Vendedora IA</div>
+          </div>
+          <div class="online-pill"><div class="online-dot"></div>online</div>
+        </div>
+        <div class="agent-desc">Qualificação, objeções e fechamento. Metodologia Sandler.</div>
+        <div class="agent-channels">
+          <span class="channel-tag">#vendas</span>
+        </div>
+      </div>
+
+      <div class="agent-card area-vendas">
+        <div class="agent-header">
+          <div class="agent-icon">📋</div>
+          <div class="agent-meta">
+            <h3>Marta</h3>
+            <div class="role">Analista Comercial</div>
+          </div>
+          <div class="online-pill"><div class="online-dot"></div>online</div>
+        </div>
+        <div class="agent-desc">Score de leads, priorização de pipeline e handoff Lia → Mari.</div>
+        <div class="agent-channels">
+          <span class="channel-tag">#vendas</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ANDAR 4: Produto / CS -->
+  <div class="floor">
+    <div class="floor-label">
+      <span class="fl-icon">🌱</span>
+      <h2>Produto &amp; Customer Success</h2>
+      <div class="fl-line"></div>
+    </div>
+    <div class="agents-grid">
+
+      <div class="agent-card area-cs">
+        <div class="agent-header">
+          <div class="agent-icon">🌿</div>
+          <div class="agent-meta">
+            <h3>Mari</h3>
+            <div class="role">Customer Success</div>
+          </div>
+          <div class="online-pill"><div class="online-dot"></div>online</div>
+        </div>
+        <div class="agent-desc">Jornada D0–D180, retenção, renovação e saúde das mentoradas.</div>
+        <div class="agent-channels">
+          <span class="channel-tag">#produto</span>
+        </div>
+      </div>
+
+      <div class="agent-card area-produto">
+        <div class="agent-header">
+          <div class="agent-icon">📐</div>
+          <div class="agent-meta">
+            <h3>Paulo</h3>
+            <div class="role">DI de Produto</div>
+          </div>
+          <div class="online-pill"><div class="online-dot"></div>online</div>
+        </div>
+        <div class="agent-desc">Estrutura da A Tribus, material didático, exercícios e jornada de transformação.</div>
+        <div class="agent-channels">
+          <span class="channel-tag">#produto</span>
+        </div>
+      </div>
+
+      <div class="agent-card area-financeiro">
+        <div class="agent-header">
+          <div class="agent-icon">💰</div>
+          <div class="agent-meta">
+            <h3>Sofia</h3>
+            <div class="role">Financeiro</div>
+          </div>
+          <div class="online-pill"><div class="online-dot"></div>online</div>
+        </div>
+        <div class="agent-desc">Faturamento, MRR, inadimplência, recorrência e fluxo de caixa.</div>
+        <div class="agent-channels">
+          <span class="channel-tag">#financeiro</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ANDAR 5: Operações -->
+  <div class="floor">
+    <div class="floor-label">
+      <span class="fl-icon">⚙️</span>
+      <h2>Operações</h2>
+      <div class="fl-line"></div>
+    </div>
+    <div class="agents-grid">
+
+      <div class="agent-card area-ops">
+        <div class="agent-header">
+          <div class="agent-icon">🌙</div>
+          <div class="agent-meta">
+            <h3>Lua</h3>
+            <div class="role">Gestora de Operações</div>
+          </div>
+          <div class="online-pill"><div class="online-dot"></div>online</div>
+        </div>
+        <div class="agent-desc">Backlog, roteamento, status do squad e debrief semanal.</div>
+        <div class="agent-channels">
+          <span class="channel-tag">#squadgeral</span>
+          <span class="channel-tag">#talita</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  Squad TNeris · <a href="/curadoria">Curadoria de Notícias</a> · Rodando na nuvem 24/7
+</footer>
+
+</body>
+</html>

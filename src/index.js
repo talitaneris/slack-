@@ -31,6 +31,11 @@ receiver.router.get('/curadoria', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/curadoria.html'));
 });
 
+// Escritório virtual — visualização dos agentes
+receiver.router.get('/escritorio', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/escritorio.html'));
+});
+
 receiver.router.get('/curadoria/api', async (req, res) => {
   try {
     if (isCacheStale() || req.query.force) await refreshAll();
