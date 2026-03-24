@@ -179,7 +179,6 @@ async function handleMention({ event, client, logger }) {
     } else {
       historico = await fetchChannelContext(client, event.channel, event.ts);
     }
-    console.log(`[ctx] agente=${agent.key} thread=${!!event.thread_ts} historico=${historico.length} msgs`);
 
     // Chama o Claude com ou sem histórico
     let response;
