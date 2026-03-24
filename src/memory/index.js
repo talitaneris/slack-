@@ -57,9 +57,8 @@ async function readMemory(agentKey) {
  */
 async function appendMemory(agentKey, entry) {
   try {
-    console.log(`[memory] appendMemory chamado — agentKey="${agentKey}"`);
     const sb = getClient();
-    if (!sb) { console.warn('[memory] Supabase client ausente'); return; }
+    if (!sb) return;
 
     // Timestamp BRT legível
     const brtNow = new Date(Date.now() - 3 * 60 * 60 * 1000)
@@ -77,10 +76,8 @@ async function appendMemory(agentKey, entry) {
       { agent_key: agentKey, content: conteudoAtualizado, updated_at: new Date().toISOString() },
       { onConflict: 'agent_key' }
     );
-    if (error) console.error(`[memory] Erro no upsert agent_memory:`, error.message);
-    else console.log(`[memory] Memória salva — agentKey="${agentKey}"`);
-  } catch (err) {
-    console.error(`[memory] Exceção em appendMemory:`, err.message);
+  } catch {
+    // Falha silenciosa — nunca derruba o bot
   }
 }
 
