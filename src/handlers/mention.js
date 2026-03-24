@@ -184,10 +184,12 @@ async function handleMention({ event, client, logger }) {
     // Chama o Claude com ou sem histórico
     let response;
     if (historico.length > 0) {
-      response = await callClaudeWithHistory(systemPrompt, [
-        ...historico,
-        { role: 'user', content: rawText },
-      ]);
+      // Injeta o contexto diretamente na mensagem para garantir que o agente use
+      const contextoTexto = historico
+        .map(m => `[${m.role === 'user' ? 'Talita' : 'Agente'}]: ${m.content}`)
+        .join('\n\n');
+      const mensagemComContexto = `CONTEXTO JÁ FORNECIDO NA CONVERSA:\n${contextoTexto}\n\n---\nDEMANDA ATUAL: ${rawText}\n\nIMPORTANTE: Use o contexto acima. NÃO peça informações que já estão ali.`;
+      response = await callClaude(systemPrompt, mensagemComContexto);
     } else {
       response = await callClaude(systemPrompt, rawText);
     }
