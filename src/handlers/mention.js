@@ -3,6 +3,7 @@ const { callClaude, callClaudeWithHistory } = require('../claude');
 const { fetchBrandKit } = require('../notion');
 const { readMemory, appendMemory, saveAprovacaoPendente } = require('../memory/index');
 const { getPendingFor } = require('../queue/index');
+const { processMariahCalendar } = require('./mariah');
 
 const APROVACOES_CHANNEL = 'C061GRE0LUA';
 
@@ -201,6 +202,12 @@ async function handleMention({ event, client, logger }) {
       }
     } catch (queueErr) {
       // Falha de fila não interrompe o fluxo
+    }
+
+    // Fluxo especial para Mariah: verifica se é pedido de agenda e executa no Google Calendar
+    if (agent.key === 'assistente') {
+      const calendarResponse = await processMariahCalendar(rawText, systemPrompt);
+      if (calendarResponse) response = calendarResponse;
     }
 
     // Grava memória após a resposta — fire and forget (não bloqueia o bot)
