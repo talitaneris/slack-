@@ -1,6 +1,8 @@
 const { detectAgent, AGENTS } = require('../agents');
-const { callClaude } = require('../claude');
+const { callClaude, callClaudeWithHistory } = require('../claude');
 const { fetchBrandKit } = require('../notion');
+const { readMemory, appendMemory, saveAprovacaoPendente } = require('../memory/index');
+const { getPendingFor } = require('../queue/index');
 
 const APROVACOES_CHANNEL = 'C061GRE0LUA';
 
@@ -43,6 +45,38 @@ Se precisa ajuste:
 🔄 *Vega sugere ajuste*
 [Diga especificamente o que ajustar e por quê — máximo 3 linhas]
 [Entregue a versão corrigida]`;
+
+/**
+ * Busca o histórico do thread para enviar como contexto ao Claude.
+ * Retorna array de { role, content } excluindo a mensagem atual (última).
+ */
+async function fetchThreadHistory(client, channel, threadTs, botUserId) {
+  try {
+    const result = await client.conversations.replies({
+      channel,
+      ts: threadTs,
+      limit: 20,
+    });
+
+    const messages = result.messages || [];
+
+    // Remove a última mensagem (é a atual, que já vai como userMessage)
+    const historico = messages.slice(0, -1);
+
+    return historico.map(msg => {
+      // Limpa menções ao bot do texto
+      const textoLimpo = (msg.text || '').replace(/<@[A-Z0-9]+>/g, '').trim();
+      return {
+        role:    msg.bot_id ? 'assistant' : 'user',
+        content: textoLimpo,
+      };
+    }).filter(m => m.content.length > 0); // remove mensagens vazias após limpeza
+
+  } catch (err) {
+    // Falha silenciosa — retorna histórico vazio, o bot continua funcionando
+    return [];
+  }
+}
 
 /**
  * Handler para eventos app_mention.
@@ -96,7 +130,52 @@ async function handleMention({ event, client, logger }) {
       }
     }
 
-    const response = await callClaude(systemPrompt, rawText);
+    // Lê a memória acumulada do agente e acrescenta ao system prompt
+    try {
+      const memoriaAgente = await readMemory(agent.key);
+      if (memoriaAgente && memoriaAgente.trim().length > 0) {
+        systemPrompt = `${systemPrompt}\n\nMEMÓRIA ACUMULADA:\n${memoriaAgente.slice(-2000)}`;
+      }
+    } catch (memErr) {
+      // Falha de memória não interrompe o fluxo
+    }
+
+    // Decide como chamar o Claude: com histórico de thread ou mensagem simples
+    let response;
+    if (event.thread_ts) {
+      // É uma resposta em thread — busca o histórico para contexto
+      const botUserId  = event.authorizations?.[0]?.user_id || '';
+      const historico  = await fetchThreadHistory(client, event.channel, event.thread_ts, botUserId);
+
+      if (historico.length > 0) {
+        // Acrescenta a mensagem atual ao final do histórico
+        const messages = [...historico, { role: 'user', content: rawText }];
+        response = await callClaudeWithHistory(systemPrompt, messages);
+      } else {
+        // Sem histórico recuperável: chamada simples
+        response = await callClaude(systemPrompt, rawText);
+      }
+    } else {
+      // Mensagem direta (não é thread): chamada simples
+      response = await callClaude(systemPrompt, rawText);
+    }
+
+    // Verifica tarefas pendentes na fila para o agente
+    try {
+      const tarefasPendentes = await getPendingFor(agent.key);
+      if (tarefasPendentes.length > 0) {
+        response = `${response}\n\n📋 _${tarefasPendentes.length} tarefa(s) pendente(s) na fila para ${agent.title}._`;
+      }
+    } catch (queueErr) {
+      // Falha de fila não interrompe o fluxo
+    }
+
+    // Grava memória após a resposta — fire and forget (não bloqueia o bot)
+    appendMemory(
+      agent.key,
+      `PERGUNTA: ${rawText.slice(0, 300)}\nRESPOSTA: ${response.slice(0, 500)}`
+    ).catch(() => {});
+
     const agentHeader = `${agent.icon} *${agent.title}* — ${agent.role}`;
 
     // Fluxo especial para People: revisão do Vega antes de ir para #aprovacoes
@@ -124,12 +203,15 @@ async function handleMention({ event, client, logger }) {
         text: `⭐ *Vega* — Estrategista de Marca\n\n${vegaReview}`,
       });
 
-      // 3. Se Vega aprovou, envia para #aprovacoes
+      // 3. Se Vega aprovou, envia para #aprovacoes e registra aprovação pendente
       if (vegaApproved) {
-        await client.chat.postMessage({
+        const approvalMessage = await client.chat.postMessage({
           channel: APROVACOES_CHANNEL,
-          text: `✍️ *People* — Conteúdo para aprovação\n\n${response}\n\n---\n⭐ *Vega aprovou* — aguardando aprovação final de Talita.`,
+          text: `✍️ *People* — Conteúdo para aprovação\n\n${response}\n\n---\n⭐ *Vega aprovou* — aguardando aprovação final de Talita.\n→ Responda APROVADO para confirmar ou REVISAR [feedback] para ajustar`,
         });
+
+        // Salva a aprovação pendente para o handler de aprovações processar
+        saveAprovacaoPendente(approvalMessage.ts, 'people', response).catch(() => {});
 
         await client.chat.postMessage({
           channel: event.channel,

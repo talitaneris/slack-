@@ -6,6 +6,8 @@ const { App, ExpressReceiver } = require('@slack/bolt');
 const { handleMention } = require('./handlers/mention');
 const { initScheduler } = require('./scheduler/routines');
 const { refreshAll, getCache, isCacheStale } = require('./curadoria/crawler');
+const { registerApprovalHandler } = require('./handlers/approval');
+const { registerWebhooks } = require('./webhooks/index');
 
 // Validação das variáveis de ambiente obrigatórias
 const REQUIRED_ENV = ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET', 'ANTHROPIC_API_KEY'];
@@ -23,7 +25,7 @@ const receiver = new ExpressReceiver({
 
 // Health check — Render usa essa rota para verificar se o serviço está vivo
 receiver.router.get('/', (req, res) => {
-  res.status(200).send('Squad TNeris Bot — online ✅');
+  res.status(200).send('Squad TNeris Bot — online ✅ | /webhook/lead | /webhook/metrics');
 });
 
 // Curadoria — site de notícias
@@ -56,10 +58,16 @@ app.event('app_mention', async ({ event, client, logger }) => {
   await handleMention({ event, client, logger });
 });
 
+// Handler de aprovações no canal #aprovacoes
+registerApprovalHandler(app);
+
 // Handler de erros globais
 app.error(async (error) => {
   console.error('Erro global no Bolt:', error);
 });
+
+// Registra os endpoints de webhook no receiver Express
+registerWebhooks(receiver, app.client, console);
 
 // Keep-alive: pinga o próprio serviço a cada 14 min para não hibernar no Render free
 function startKeepAlive(hostname) {

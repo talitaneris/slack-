@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const { callClaude } = require('../claude');
 const { AGENTS } = require('../agents');
 const { refreshAll } = require('../curadoria/crawler');
+const { getPendingFor, cleanup } = require('../queue/index');
 
 // IDs dos canais do Slack
 const CHANNELS = {
@@ -201,7 +202,65 @@ Feche com:
     }, slackClient, logger);
   }, { timezone: 'America/Sao_Paulo' });
 
-  logger.info('🗓️ Scheduler iniciado — 8h rotinas | 9h curadoria | 9h30 seg conselho');
+  // ── 18h BRT diário — Lens resume as métricas do dia ──
+  cron.schedule('0 18 * * *', async () => {
+    logger.info('📈 Cron 18h — Lens resumindo métricas do dia');
+    await runRoutine({
+      agent:     AGENTS.lens,
+      channel:   CHANNELS.gestao,
+      maxTokens: 350,
+      prompt:    'Lens, fim de tarde. Faça um resumo das métricas do dia: o que se destacou positivamente, o que ficou abaixo do esperado, e 1 ajuste para amanhã. Máximo 150 palavras.',
+    }, slackClient, logger);
+  }, { timezone: 'America/Sao_Paulo' });
+
+  // ── 6h30 BRT diário — Lua lê a fila e gera briefing consolidado ──
+  cron.schedule('30 6 * * *', async () => {
+    logger.info('🌙 Cron 6h30 — Lua gerando briefing de fila');
+    try {
+      // Monta resumo das tarefas pendentes por agente
+      const agentes = Object.values(AGENTS).map(a => a.key);
+      const resumoPorAgente = [];
+
+      for (const key of agentes) {
+        try {
+          const pendentes = getPendingFor(key);
+          if (pendentes.length > 0) {
+            resumoPorAgente.push(`• ${key}: ${pendentes.length} tarefa(s) pendente(s)`);
+          }
+        } catch (qErr) {
+          // Ignora erro de fila individual
+        }
+      }
+
+      const queueSummary = resumoPorAgente.length > 0
+        ? resumoPorAgente.join('\n')
+        : 'Nenhuma tarefa pendente na fila.';
+
+      await runRoutine({
+        agent:     AGENTS.lua,
+        channel:   CHANNELS.talita,
+        maxTokens: 350,
+        prompt:    `Lua, briefing de 6h30. Tarefas pendentes na fila:\n${queueSummary}\n\nGere um resumo do que o squad precisa resolver hoje. Máximo 150 palavras.`,
+      }, slackClient, logger);
+
+    } catch (err) {
+      logger.error('Erro no cron 6h30 Lua:', err.message);
+    }
+  }, { timezone: 'America/Sao_Paulo' });
+
+  // ── Meia-noite BRT diário — limpeza da fila inter-agente ──
+  cron.schedule('0 0 * * *', () => {
+    try {
+      const removidas = cleanup();
+      if (removidas > 0) {
+        logger.info(`🧹 Cleanup da fila: ${removidas} tarefa(s) antiga(s) removida(s)`);
+      }
+    } catch (err) {
+      logger.error('Erro no cleanup da fila:', err.message);
+    }
+  }, { timezone: 'America/Sao_Paulo' });
+
+  logger.info('🗓️ Scheduler iniciado — 6h30 briefing | 8h rotinas | 9h curadoria | 9h30 seg conselho | 18h métricas | 0h cleanup');
 }
 
 module.exports = { initScheduler };
