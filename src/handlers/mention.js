@@ -47,35 +47,64 @@ Se precisa ajuste:
 [Entregue a versão corrigida]`;
 
 /**
- * Busca o histórico do thread para enviar como contexto ao Claude.
- * Retorna array de { role, content } excluindo a mensagem atual (última).
+ * Instrução universal de execução imediata — preposta a todo system prompt.
+ * Resolve Bug 3 e Bug 4: agentes perguntavam quando tinham contexto suficiente.
  */
-async function fetchThreadHistory(client, channel, threadTs, botUserId) {
+const EXECUTION_RULE = `
+REGRA DE EXECUÇÃO IMEDIATA:
+Antes de fazer qualquer pergunta, verifique todo o histórico da conversa.
+Se o contexto necessário já foi fornecido (material, agenda, texto, dados), EXECUTE IMEDIATAMENTE.
+Só faça perguntas quando uma informação crítica estiver genuinamente ausente e impossível de inferir.
+Nunca peça informações que já aparecem na conversa atual.
+Quando o usuário disser "não gostei, quero X" e já tiver colado o material: use o material e entregue.
+`;
+
+/**
+ * Busca o histórico de um thread para contexto.
+ * Retorna array de { role, content } excluindo a mensagem atual.
+ */
+async function fetchThreadHistory(client, channel, threadTs) {
   try {
     const result = await client.conversations.replies({
       channel,
       ts: threadTs,
       limit: 20,
     });
-
-    const messages = result.messages || [];
-
-    // Remove a última mensagem (é a atual, que já vai como userMessage)
-    const historico = messages.slice(0, -1);
-
-    return historico.map(msg => {
-      // Limpa menções ao bot do texto
-      const textoLimpo = (msg.text || '').replace(/<@[A-Z0-9]+>/g, '').trim();
-      return {
-        role:    msg.bot_id ? 'assistant' : 'user',
-        content: textoLimpo,
-      };
-    }).filter(m => m.content.length > 0); // remove mensagens vazias após limpeza
-
-  } catch (err) {
-    // Falha silenciosa — retorna histórico vazio, o bot continua funcionando
+    return formatMessages((result.messages || []).slice(0, -1));
+  } catch {
     return [];
   }
+}
+
+/**
+ * Busca as últimas mensagens do canal quando não há thread.
+ * Resolve Bug 1: usuária manda material e depois menciona o agente numa msg separada.
+ */
+async function fetchChannelContext(client, channel, currentTs) {
+  try {
+    const result = await client.conversations.history({
+      channel,
+      latest: currentTs,
+      limit: 6,
+      inclusive: false,
+    });
+    // Retorna em ordem cronológica (a API devolve do mais novo para o mais antigo)
+    return formatMessages((result.messages || []).reverse());
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Normaliza um array de mensagens do Slack para { role, content }.
+ */
+function formatMessages(msgs) {
+  return msgs
+    .map(msg => ({
+      role:    msg.bot_id ? 'assistant' : 'user',
+      content: (msg.text || '').replace(/<@[A-Z0-9]+>/g, '').trim(),
+    }))
+    .filter(m => m.content.length > 0);
 }
 
 /**
@@ -130,33 +159,36 @@ async function handleMention({ event, client, logger }) {
       }
     }
 
+    // Injeta regra de execução imediata em todos os agentes (Fix Bug 3 e 4)
+    systemPrompt = EXECUTION_RULE + systemPrompt;
+
     // Lê a memória acumulada do agente e acrescenta ao system prompt
     try {
       const memoriaAgente = await readMemory(agent.key);
       if (memoriaAgente && memoriaAgente.trim().length > 0) {
         systemPrompt = `${systemPrompt}\n\nMEMÓRIA ACUMULADA:\n${memoriaAgente.slice(-2000)}`;
       }
-    } catch (memErr) {
+    } catch {
       // Falha de memória não interrompe o fluxo
     }
 
-    // Decide como chamar o Claude: com histórico de thread ou mensagem simples
-    let response;
+    // Monta histórico de contexto — thread ou canal (Fix Bug 1)
+    let historico = [];
     if (event.thread_ts) {
-      // É uma resposta em thread — busca o histórico para contexto
-      const botUserId  = event.authorizations?.[0]?.user_id || '';
-      const historico  = await fetchThreadHistory(client, event.channel, event.thread_ts, botUserId);
-
-      if (historico.length > 0) {
-        // Acrescenta a mensagem atual ao final do histórico
-        const messages = [...historico, { role: 'user', content: rawText }];
-        response = await callClaudeWithHistory(systemPrompt, messages);
-      } else {
-        // Sem histórico recuperável: chamada simples
-        response = await callClaude(systemPrompt, rawText);
-      }
+      historico = await fetchThreadHistory(client, event.channel, event.thread_ts);
     } else {
-      // Mensagem direta (não é thread): chamada simples
+      // Sem thread: lê últimas msgs do canal para capturar material enviado antes da menção
+      historico = await fetchChannelContext(client, event.channel, event.ts);
+    }
+
+    // Chama o Claude com ou sem histórico
+    let response;
+    if (historico.length > 0) {
+      response = await callClaudeWithHistory(systemPrompt, [
+        ...historico,
+        { role: 'user', content: rawText },
+      ]);
+    } else {
       response = await callClaude(systemPrompt, rawText);
     }
 
@@ -178,8 +210,13 @@ async function handleMention({ event, client, logger }) {
 
     const agentHeader = `${agent.icon} *${agent.title}* — ${agent.role}`;
 
+    // Fix Bug 2: Vega mencionado diretamente não dispara auto-revisão do People.
+    // Auto-revisão só ocorre quando @people é quem gerou o conteúdo.
+    const vegaFoiMencionadoDiretamente = agent.key === 'vega';
+
     // Fluxo especial para People: revisão do Vega antes de ir para #aprovacoes
-    if (agent.key === 'people') {
+    // (não executa se Vega foi chamado diretamente)
+    if (agent.key === 'people' && !vegaFoiMencionadoDiretamente) {
       // 1. Mostra o conteúdo da People no thread
       await client.chat.update({
         channel: event.channel,
