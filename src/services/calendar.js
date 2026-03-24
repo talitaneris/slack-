@@ -21,9 +21,19 @@ const CALENDAR_ID = process.env.GOOGLE_CALENDAR_ID || 'primary';
 function getAuth() {
   const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN } = process.env;
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REFRESH_TOKEN) {
+    console.warn('[calendar] Credenciais ausentes:', {
+      id: !!GOOGLE_CLIENT_ID,
+      secret: !!GOOGLE_CLIENT_SECRET,
+      token: !!GOOGLE_REFRESH_TOKEN
+    });
     return null;
   }
-  const auth = new google.auth.OAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
+  console.log('[calendar] Credenciais presentes — ID termina em:', GOOGLE_CLIENT_ID.slice(-20));
+  const auth = new google.auth.OAuth2(
+    GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET,
+    'urn:ietf:wg:oauth:2.0:oob'
+  );
   auth.setCredentials({ refresh_token: GOOGLE_REFRESH_TOKEN });
   return auth;
 }
