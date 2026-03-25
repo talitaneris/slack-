@@ -6,262 +6,425 @@
   <title>TNeris — Curadoria</title>
   <style>
     :root {
-      --midnight: #122C4F;
-      --midnight-light: #1a3d6e;
-      --pearl: #FBF9E4;
-      --ocean: #5B88B2;
-      --noir: #0a0a0a;
-      --white: #ffffff;
-      --gray: #8a9bb0;
-      --card-bg: #1a2f4a;
-      --radius: 12px;
+      --bg: #ffffff;
+      --bg-soft: #f7f7f5;
+      --border: #e8e8e4;
+      --border-soft: #f0f0ec;
+      --text: #0a0a0a;
+      --text-mid: #4a4a4a;
+      --text-muted: #9a9a96;
+      --accent: #0a0a0a;
+      --accent-soft: #f0f0ec;
+      --radius: 10px;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: var(--midnight);
-      color: var(--white);
+      background: var(--bg);
+      color: var(--text);
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
       min-height: 100vh;
     }
 
-    /* ── HEADER ── */
+    /* HEADER */
     header {
-      background: var(--noir);
-      border-bottom: 1px solid rgba(91,136,178,0.25);
-      padding: 20px 32px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 40px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      flex-wrap: wrap;
       gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
     }
 
     .logo {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
 
     .logo-mark {
-      width: 38px;
-      height: 38px;
-      background: var(--ocean);
-      border-radius: 8px;
+      width: 30px;
+      height: 30px;
+      background: var(--text);
+      border-radius: 6px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
+      font-size: 11px;
       font-weight: 900;
-      color: var(--pearl);
-      letter-spacing: -1px;
+      color: #fff;
+      letter-spacing: -0.5px;
     }
 
-    .logo-text h1 {
-      font-size: 17px;
+    .logo-name {
+      font-size: 14px;
       font-weight: 700;
-      color: var(--pearl);
-      letter-spacing: 0.5px;
+      color: var(--text);
+      letter-spacing: 0.2px;
     }
 
-    .logo-text span {
-      font-size: 12px;
-      color: var(--gray);
-      letter-spacing: 1px;
-      text-transform: uppercase;
-    }
-
-    .header-meta {
+    .header-right {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 12px;
     }
 
     #last-update {
-      font-size: 12px;
-      color: var(--gray);
+      font-size: 11px;
+      color: var(--text-muted);
     }
 
     #refresh-btn {
       background: transparent;
-      border: 1px solid var(--ocean);
-      color: var(--ocean);
-      padding: 7px 16px;
-      border-radius: 6px;
+      border: 1px solid var(--border);
+      color: var(--text-mid);
+      padding: 6px 14px;
+      border-radius: 20px;
       font-size: 12px;
       cursor: pointer;
       transition: all .2s;
+      font-family: inherit;
     }
 
-    #refresh-btn:hover { background: var(--ocean); color: var(--white); }
-    #refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    #refresh-btn:hover { background: var(--text); color: #fff; border-color: var(--text); }
+    #refresh-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
-    /* ── TABS ── */
-    .tabs-wrapper {
-      background: var(--noir);
-      border-bottom: 1px solid rgba(91,136,178,0.15);
-      padding: 0 32px;
+    /* HERO */
+    .hero {
+      padding: 56px 40px 40px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hero-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .hero-title {
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 52px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -2px;
+      line-height: 1.05;
+      margin-bottom: 14px;
+    }
+
+    .hero-sub {
+      font-size: 14px;
+      color: var(--text-muted);
+      max-width: 420px;
+      margin: 0 auto 36px;
+      line-height: 1.7;
+    }
+
+    .stats-row {
       display: flex;
-      gap: 4px;
+      justify-content: center;
+      gap: 56px;
+    }
+
+    .stat-num {
+      font-family: Georgia, serif;
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-top: 6px;
+    }
+
+    /* TABS */
+    .tabs-wrapper {
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 40px;
+      display: flex;
+      gap: 8px;
       overflow-x: auto;
       scrollbar-width: none;
+      align-items: center;
     }
 
     .tabs-wrapper::-webkit-scrollbar { display: none; }
 
     .tab {
-      padding: 14px 20px;
-      font-size: 13px;
+      padding: 7px 16px;
+      font-size: 12px;
       font-weight: 600;
-      color: var(--gray);
+      color: var(--text-muted);
       cursor: pointer;
-      border-bottom: 3px solid transparent;
+      border: 1px solid var(--border);
+      border-radius: 20px;
       white-space: nowrap;
-      transition: all .2s;
-      letter-spacing: 0.3px;
+      transition: all .15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg);
     }
 
-    .tab:hover { color: var(--white); }
+    .tab:hover { color: var(--text); border-color: var(--text-mid); }
 
     .tab.active {
-      color: var(--white);
-      border-bottom-color: var(--tab-color, var(--ocean));
+      background: var(--text);
+      color: #fff;
+      border-color: var(--text);
     }
 
-    /* ── MAIN ── */
-    main {
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 32px;
+    .tab-count {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      background: var(--border-soft);
+      padding: 1px 6px;
+      border-radius: 10px;
     }
 
-    /* ── LOADING / ERROR ── */
-    .state-msg {
-      text-align: center;
-      padding: 80px 20px;
-      color: var(--gray);
+    .tab.active .tab-count {
+      background: rgba(255,255,255,0.2);
+      color: rgba(255,255,255,0.85);
     }
 
-    .spinner {
-      width: 36px;
-      height: 36px;
-      border: 3px solid rgba(91,136,178,0.2);
-      border-top-color: var(--ocean);
-      border-radius: 50%;
-      animation: spin .8s linear infinite;
-      margin: 0 auto 20px;
+    /* PAUTAS */
+    .pautas-section {
+      background: var(--bg-soft);
+      border-bottom: 1px solid var(--border);
+      padding: 36px 40px;
     }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
+    .section-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
 
-    /* ── GRID ── */
-    .articles-grid {
+    .pautas-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
     }
 
-    /* ── CARD ── */
-    .card {
-      background: var(--card-bg);
-      border: 1px solid rgba(91,136,178,0.15);
+    .pauta-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 22px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      transition: border-color .2s, transform .15s;
-      animation: fadeIn .35s ease;
+      gap: 14px;
+      transition: box-shadow .2s;
     }
 
-    .card:hover {
-      border-color: rgba(91,136,178,0.4);
-      transform: translateY(-2px);
+    .pauta-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.07); }
+
+    .pauta-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
     }
 
-    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    .pauta-titulo {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    .pauta-fonte {
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--text-muted);
+      padding: 3px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .pauta-row-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+
+    .pauta-text {
+      font-size: 12px;
+      color: var(--text-mid);
+      line-height: 1.6;
+    }
+
+    .pauta-hook {
+      background: var(--bg-soft);
+      border-left: 2px solid var(--text);
+      border-radius: 0 6px 6px 0;
+      padding: 12px 14px;
+    }
+
+    .pauta-hook .pauta-text {
+      color: var(--text);
+      font-style: italic;
+    }
+
+    /* MAIN */
+    main {
+      padding: 36px 40px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .cat-header {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 28px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-soft);
+    }
+
+    .section-label-main {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .cat-title {
+      font-family: Georgia, serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .cat-count {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .articles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: box-shadow .2s;
+    }
+
+    .card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.07); }
 
     .card-meta {
       display: flex;
-      align-items: center;
       justify-content: space-between;
+      align-items: center;
       gap: 8px;
     }
 
     .source-badge {
-      font-size: 11px;
+      font-size: 9px;
       font-weight: 700;
-      padding: 3px 9px;
-      border-radius: 4px;
-      letter-spacing: 0.4px;
+      letter-spacing: 1px;
+      color: var(--text-muted);
       text-transform: uppercase;
-      background: rgba(91,136,178,0.15);
-      color: var(--ocean);
     }
 
     .card-date {
-      font-size: 11px;
-      color: var(--gray);
+      font-size: 10px;
+      color: var(--text-muted);
+      white-space: nowrap;
     }
 
     .card-title {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 700;
-      color: var(--pearl);
+      color: var(--text);
       line-height: 1.45;
-      letter-spacing: -0.1px;
     }
 
     .card-summary {
-      font-size: 13px;
-      color: #8fa8c4;
-      line-height: 1.6;
+      font-size: 12px;
+      color: var(--text-mid);
+      line-height: 1.65;
       flex: 1;
     }
 
     .card-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
-      color: var(--ocean);
+      color: var(--text-muted);
       text-decoration: none;
       margin-top: 4px;
       transition: color .15s;
     }
 
-    .card-link:hover { color: var(--pearl); }
+    .card-link:hover { color: var(--text); }
 
-    /* ── CATEGORY HEADER ── */
-    .cat-header {
+    /* STATES */
+    .state-msg {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 24px;
+      justify-content: center;
+      padding: 80px 20px;
+      gap: 16px;
+      color: var(--text-muted);
+      font-size: 13px;
+      text-align: center;
     }
 
-    .cat-icon { font-size: 22px; }
-
-    .cat-title {
-      font-size: 20px;
-      font-weight: 800;
-      color: var(--pearl);
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--border);
+      border-top-color: var(--text);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
     }
 
-    .cat-count {
-      font-size: 12px;
-      color: var(--gray);
-      margin-left: 4px;
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── RESPONSIVE ── */
-    @media (max-width: 600px) {
-      header { padding: 16px 20px; }
-      main { padding: 20px; }
-      .tabs-wrapper { padding: 0 16px; }
-      .articles-grid { grid-template-columns: 1fr; }
+    /* RESPONSIVE */
+    @media (max-width: 640px) {
+      header, .hero, .pautas-section, main { padding-left: 20px; padding-right: 20px; }
+      .tabs-wrapper { padding: 12px 20px; }
+      .hero-title { font-size: 36px; }
+      .stats-row { gap: 32px; }
+      .articles-grid, .pautas-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -270,29 +433,53 @@
 <header>
   <div class="logo">
     <div class="logo-mark">TN</div>
-    <div class="logo-text">
-      <h1>TNeris Curadoria</h1>
-      <span>Pauta quente do dia</span>
-    </div>
+    <div class="logo-name">TNeris</div>
   </div>
-  <div class="header-meta">
-    <span id="last-update">Carregando...</span>
-    <button id="refresh-btn" onclick="loadNews(true)">↻ Atualizar</button>
+  <div class="header-right">
+    <span id="last-update"></span>
+    <button id="refresh-btn" onclick="loadNews(true)">Atualizar</button>
   </div>
 </header>
 
+<div class="hero">
+  <div class="hero-label">Atualizacao diaria</div>
+  <div class="hero-title">Inteligencia do Dia</div>
+  <div class="hero-sub">Negocios, marketing, tendencias e comportamento — curados para o seu posicionamento.</div>
+  <div class="stats-row">
+    <div>
+      <div class="stat-num" id="stat-artigos">—</div>
+      <div class="stat-label">Artigos</div>
+    </div>
+    <div>
+      <div class="stat-num" id="stat-categorias">—</div>
+      <div class="stat-label">Categorias</div>
+    </div>
+    <div>
+      <div class="stat-num" id="stat-fontes">—</div>
+      <div class="stat-label">Fontes</div>
+    </div>
+  </div>
+</div>
+
 <div class="tabs-wrapper" id="tabs"></div>
+
+<div class="pautas-section" id="pautas-section" style="display:none;">
+  <div class="section-label">Pautas quentes — angulo de posicionamento</div>
+  <div class="pautas-grid" id="pautas-grid"></div>
+</div>
 
 <main id="main">
   <div class="state-msg">
     <div class="spinner"></div>
-    <p>Buscando as notícias do dia...</p>
+    <p>Buscando as noticias do dia...</p>
   </div>
 </main>
 
 <script>
   let newsData = null;
   let activeTab = null;
+
+  const FONTES_TOTAL = 54;
 
   function formatDate(dateStr) {
     if (!dateStr) return '';
@@ -303,15 +490,31 @@
     } catch { return ''; }
   }
 
-  function renderTabs(categories) {
+  function renderStats(data) {
+    const total = Object.values(data.data || {}).reduce((s, arr) => s + arr.length, 0);
+    document.getElementById('stat-artigos').textContent = total;
+    document.getElementById('stat-categorias').textContent = data.categories?.length || 0;
+    document.getElementById('stat-fontes').textContent = FONTES_TOTAL + '+';
+  }
+
+  function renderTabs(categories, data) {
     const wrapper = document.getElementById('tabs');
     wrapper.innerHTML = '';
-    categories.forEach((cat, i) => {
+
+    const pautasCount = (newsData?.pautas || []).length;
+    const tabPautas = document.createElement('div');
+    tabPautas.className = 'tab' + (activeTab === '__pautas__' ? ' active' : '');
+    tabPautas.dataset.key = '__pautas__';
+    tabPautas.innerHTML = `Pautas do Dia <span class="tab-count">${pautasCount}</span>`;
+    tabPautas.onclick = () => switchTab('__pautas__', categories);
+    wrapper.appendChild(tabPautas);
+
+    categories.forEach(cat => {
+      const count = data[cat.key]?.length || 0;
       const tab = document.createElement('div');
-      tab.className = 'tab' + (i === 0 ? ' active' : '');
-      tab.style.setProperty('--tab-color', cat.color);
-      tab.textContent = cat.icon + '  ' + cat.label;
+      tab.className = 'tab' + (cat.key === activeTab ? ' active' : '');
       tab.dataset.key = cat.key;
+      tab.innerHTML = `${cat.label} <span class="tab-count">${count}</span>`;
       tab.onclick = () => switchTab(cat.key, categories);
       wrapper.appendChild(tab);
     });
@@ -319,47 +522,76 @@
 
   function switchTab(key, categories) {
     activeTab = key;
-    document.querySelectorAll('.tab').forEach(t => {
-      const isActive = t.dataset.key === key;
-      t.classList.toggle('active', isActive);
-      if (isActive) {
-        const cat = categories.find(c => c.key === key);
-        t.style.setProperty('--tab-color', cat?.color || '#5B88B2');
-      }
-    });
-    renderArticles(key);
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.key === key));
+
+    if (key === '__pautas__') {
+      renderPautas(newsData?.pautas || []);
+      document.getElementById('pautas-section').style.display = 'block';
+      document.getElementById('main').style.display = 'none';
+    } else {
+      document.getElementById('pautas-section').style.display = 'none';
+      document.getElementById('main').style.display = 'block';
+      renderArticles(key, categories);
+    }
   }
 
-  function renderArticles(key) {
+  function renderPautas(pautas) {
+    const grid = document.getElementById('pautas-grid');
+    if (!pautas.length) {
+      grid.innerHTML = '<div class="state-msg"><p>Nenhuma pauta gerada ainda. Tente atualizar.</p></div>';
+      return;
+    }
+    grid.innerHTML = pautas.map(p => `
+      <div class="pauta-card">
+        <div class="pauta-top">
+          <div class="pauta-titulo">${p.titulo}</div>
+          <div class="pauta-fonte">${p.fonte}</div>
+        </div>
+        <div>
+          <div class="pauta-row-label">Por que o ICP se importa</div>
+          <div class="pauta-text">${p.relevancia}</div>
+        </div>
+        <div>
+          <div class="pauta-row-label">Angulo Talita</div>
+          <div class="pauta-text">${p.angulo}</div>
+        </div>
+        <div class="pauta-hook">
+          <div class="pauta-row-label">Hook pronto</div>
+          <div class="pauta-text">"${p.hook}"</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function renderArticles(key, categories) {
     const main = document.getElementById('main');
     const articles = newsData?.data?.[key] || [];
-    const categories = newsData?.categories || [];
-    const cat = categories.find(c => c.key === key);
+    const cat = (categories || []).find(c => c.key === key);
 
     if (!articles.length) {
-      main.innerHTML = `<div class="state-msg"><p>Nenhum artigo disponível para esta categoria.</p></div>`;
+      main.innerHTML = '<div class="state-msg"><p>Nenhum artigo disponivel para esta categoria.</p></div>';
       return;
     }
 
-    const cards = articles.map(a => `
-      <div class="card">
-        <div class="card-meta">
-          <span class="source-badge">${a.source}</span>
-          <span class="card-date">${formatDate(a.date)}</span>
-        </div>
-        <div class="card-title">${a.title}</div>
-        ${a.summary ? `<div class="card-summary">${a.summary}${a.summary.length >= 200 ? '…' : ''}</div>` : ''}
-        <a class="card-link" href="${a.link}" target="_blank" rel="noopener">Ler artigo completo →</a>
-      </div>
-    `).join('');
-
     main.innerHTML = `
       <div class="cat-header">
-        <span class="cat-icon">${cat?.icon || ''}</span>
+        <div class="section-label-main">Destaques</div>
         <span class="cat-title">${cat?.label || ''}</span>
         <span class="cat-count">${articles.length} artigos</span>
       </div>
-      <div class="articles-grid">${cards}</div>
+      <div class="articles-grid">
+        ${articles.map(a => `
+          <div class="card">
+            <div class="card-meta">
+              <span class="source-badge">${a.source}</span>
+              <span class="card-date">${formatDate(a.date)}</span>
+            </div>
+            <div class="card-title">${a.title}</div>
+            ${a.summary ? `<div class="card-summary">${a.summary}${a.summary.length >= 200 ? '...' : ''}</div>` : ''}
+            <a class="card-link" href="${a.link}" target="_blank" rel="noopener">Ler artigo completo →</a>
+          </div>
+        `).join('')}
+      </div>
     `;
   }
 
@@ -367,29 +599,33 @@
     const btn = document.getElementById('refresh-btn');
     const updateEl = document.getElementById('last-update');
     btn.disabled = true;
-    btn.textContent = '↻ Buscando...';
+    btn.textContent = 'Buscando...';
+    document.getElementById('main').style.display = 'block';
+    document.getElementById('pautas-section').style.display = 'none';
+    document.getElementById('main').innerHTML = '<div class="state-msg"><div class="spinner"></div><p>Buscando as noticias do dia...</p></div>';
 
     try {
-      const url = force ? '/curadoria/api?force=1' : '/curadoria/api';
-      const res = await fetch(url);
+      const res = await fetch(force ? '/curadoria/api?force=1' : '/curadoria/api');
       if (!res.ok) throw new Error('Falha na API');
       newsData = await res.json();
 
-      updateEl.textContent = newsData.lastUpdate
-        ? '🟢 Atualizado: ' + newsData.lastUpdate
-        : '⚪ Sem dados';
+      if (newsData.lastUpdate) updateEl.textContent = 'Atualizado: ' + newsData.lastUpdate;
 
-      renderTabs(newsData.categories);
-      const firstKey = newsData.categories[0]?.key;
-      if (firstKey) switchTab(firstKey, newsData.categories);
+      renderStats(newsData);
+      renderTabs(newsData.categories, newsData.data || {});
 
-    } catch (err) {
-      document.getElementById('main').innerHTML =
-        `<div class="state-msg"><p>⚠️ Erro ao carregar notícias. Tente novamente.</p></div>`;
-      updateEl.textContent = '❌ Erro ao carregar';
+      if (newsData.pautas?.length) {
+        switchTab('__pautas__', newsData.categories);
+      } else {
+        const first = newsData.categories[0]?.key;
+        if (first) switchTab(first, newsData.categories);
+      }
+
+    } catch {
+      document.getElementById('main').innerHTML = '<div class="state-msg"><p>Erro ao carregar. Tente novamente.</p></div>';
     } finally {
       btn.disabled = false;
-      btn.textContent = '↻ Atualizar';
+      btn.textContent = 'Atualizar';
     }
   }
 

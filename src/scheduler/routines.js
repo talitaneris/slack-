@@ -1,7 +1,7 @@
 const cron = require('node-cron');
 const { callClaude } = require('../claude');
 const { AGENTS } = require('../agents');
-const { refreshAll } = require('../curadoria/crawler');
+const { refreshAll, getPautas } = require('../curadoria/crawler');
 const { getPendingFor, cleanup } = require('../queue/index');
 
 // IDs dos canais do Slack
@@ -14,7 +14,8 @@ const CHANNELS = {
   gestao:     'C03PX3KKTJS',
   financeiro: 'C0AMZU5RFM4',
   alertas:    'C03PY24RJJJ',
-  conselho:   process.env.SLACK_CHANNEL_CONSELHO || 'C03PX3KKTJS', // ← cole o ID do #conselho aqui ou sete SLACK_CHANNEL_CONSELHO no Render
+  conselho:   process.env.SLACK_CHANNEL_CONSELHO || 'C03PX3KKTJS',
+  aprovacoes: process.env.SLACK_CHANNEL_APROVACOES || 'C03PX3KKTJS', // ← cole o ID do #aprovacoes aqui ou sete SLACK_CHANNEL_APROVACOES no Render
 };
 
 // Rotinas diárias — rodam todo dia às 8h BRT
@@ -34,14 +35,19 @@ const DAILY_ROUTINES = [
   {
     agent: AGENTS.people,
     channel: CHANNELS.marketing,
-    prompt: `Gere o plano de conteúdo do dia:\n1. STORIES (12h e 19h) — tema, gancho de abertura, o que mostrar em cada tela, CTA\n2. FEED (Reels às 19h ou Carrossel — 3 Reels + 2 Carrosséis por semana) — se for dia de post de feed, defina tema e gancho. Se não for, indique claramente.\n3. TIKTOK (18h) — tema e gancho de abertura\n4. BRIEFING para Alex: o que o designer precisa criar hoje. Máximo 250 palavras.`,
-    maxTokens: 500,
+    prompt: `Plano de conteúdo do dia — máximo 130 palavras, sem emoji por linha, no tom da Talita.
+Tema do dia (1 frase — dentro de um pilar: capital oculto / estrutura que liberta / renovação / preeminência).
+Stories 12h: gancho de abertura pronto para usar, direto, diagnóstico ou inversão. Nunca começa com "Hoje vou falar sobre".
+Feed: é dia de post ou não é — se for, qual formato e tema. Se não for, só diz.
+TikTok 18h: gancho de abertura pronto (1-2 frases).
+Alex: o que criar, formato, referência objetiva.`,
+    maxTokens: 350,
   },
   {
     agent: AGENTS.alex,
     channel: CHANNELS.marketing,
-    prompt: `Com base no plano de People, declare o que você vai criar hoje: quais peças (carrossel / capa de Reel / story / post estático), o mood visual de cada peça, e o que precisa do briefing de People para começar. Se não houver demanda de feed hoje, foque em melhoria de templates. Máximo 180 palavras.`,
-    maxTokens: 350,
+    prompt: `Com base no briefing de People: o que você vai criar hoje (formato, tamanho, canal) e o que precisa para começar. Se não tiver demanda de feed, foca em template ou melhoria de peça existente. Máximo 80 palavras, direto.`,
+    maxTokens: 200,
   },
   {
     agent: AGENTS.lia,
@@ -67,10 +73,25 @@ const DAILY_ROUTINES = [
 const WEEKLY_ROUTINES = {
   1: [ // Segunda-feira
     {
+      agent: AGENTS.sofia,
+      channel: CHANNELS.financeiro,
+      prompt: `Lista de A RECEBER da semana — máximo 120 palavras, sem emojis por linha.
+Liste quem paga esta semana, valor e data de vencimento. Separa: confirmados vs pendentes.
+Calendário fixo: Renata (dia 5, R$1.200), Patricia (dia 10), Damaris (dia 25, R$1.000), Elis (dia 28), Carol (10/04), Brenda (07/04).
+Se algum vencimento cair nesta semana: destaque como prioritário.
+Se Eli+Aparicio ainda não fecharam renovação: incluir como pendência.`,
+      maxTokens: 300,
+    },
+    {
       agent: AGENTS.vega,
       channel: CHANNELS.marketing,
-      prompt: `Defina a direção de comunicação desta semana: mensagem-chave (1 frase de posicionamento), ângulo predominante (bastidores / autoridade / prova social / conexão pessoal / oferta), tema emocional que guia o conteúdo, e instrução específica para People e Alex. Máximo 180 palavras.`,
-      maxTokens: 400,
+      prompt: `Direção de comunicação da semana — máximo 100 palavras, sem emoji por linha.
+1 mensagem-chave (1 frase concreta — não vaga, não motivacional)
+1 pilar (capital oculto / estrutura que liberta / renovação / preeminência)
+1 ângulo (diagnóstico direto / inversão / bastidores / prova com profundidade / a vara de Moisés)
+Instrução para People: o que executar e onde
+Instrução para Alex: formato visual, referência objetiva`,
+      maxTokens: 250,
     },
     {
       agent: AGENTS.jay,
@@ -111,7 +132,12 @@ const WEEKLY_ROUTINES = {
     {
       agent: AGENTS.sofia,
       channel: CHANNELS.financeiro,
-      prompt: `Gere o relatório de MRR da semana: MRR atual vs meta do mês, pagamentos confirmados, pendências e alertas de inadimplência. Mentoradas com datas: Renata (dia 5), Patricia (dia 10), Damaris (dia 25), Elis (dia 28), Brenda (07/04 — última), Carol (10/04 — última). Máximo 180 palavras.`,
+      prompt: `Fechamento financeiro da semana — máximo 150 palavras, sem emojis por linha.
+1. O que foi pago esta semana vs o que estava previsto (confirmado / pendente / atrasado)
+2. Vendas da semana: novos contratos fechados (nome, produto, valor) — se não houve, diz zero
+3. Alerta de inadimplência se houver
+Calendário: Renata (dia 5, R$1.200), Patricia (dia 10), Damaris (dia 25, R$1.000 — 1ª parcela 25/03), Elis (dia 28), Carol (10/04), Brenda (07/04).
+Se algum contrato de renovação continuar pendente (Eli+Aparicio, Thaissa): cobrar status.`,
       maxTokens: 400,
     },
     {
@@ -130,6 +156,250 @@ const WEEKLY_ROUTINES = {
     },
   ],
 };
+
+// Arco narrativo semanal — SOAP Opera Sequence (Brunson)
+const STORIES_WEEK = {
+  0: { tema: 'Pausa ou reflexão', pilar: 'Qualquer', angulo: 'Bastidores', skip: true },
+  1: { tema: 'Backstory — o problema real, sem resolver', pilar: 'Capital Oculto', angulo: 'diagnóstico direto', gancho: 'amanhã conto o que muda quando você para de adicionar' },
+  2: { tema: 'A parede — o momento em que parou de funcionar', pilar: 'Estrutura que liberta', angulo: 'bastidores reais', gancho: 'a resposta que mudou tudo — amanhã' },
+  3: { tema: 'A epifania — o que muda quando você vê diferente', pilar: 'Capital Oculto', angulo: 'a vara de Moisés', gancho: 'me responde qual é a sua alavanca mais fraca' },
+  4: { tema: 'Prova real — quem já viveu isso com profundidade', pilar: 'Preeminência', angulo: 'prova com profundidade', gancho: 'quer entender o que foi feito? me responde aqui' },
+  5: { tema: 'Oferta natural — o próximo passo para quem se reconheceu', pilar: 'A Tribus', angulo: 'oferta depois da jornada', gancho: 'me manda DM com "diagnóstico" e te conto mais' },
+  6: { tema: 'Bastidores — processo com decisões reais, sem resultado pronto', pilar: 'Qualquer', angulo: 'document, don\'t create', gancho: '' },
+};
+
+/**
+ * Rotina de aprovação de Stories: Vega define direção → People entrega sequência.
+ * Vega posta em #aprovacoes. People responde na thread. Talita aprova.
+ */
+async function runStoriesApprovalRoutine(slackClient, logger) {
+  const now = new Date();
+  const day = now.getDay();
+  const dayInfo = STORIES_WEEK[day];
+
+  if (dayInfo.skip) {
+    logger.info('📵 Domingo — sem rotina de Stories agendada.');
+    return;
+  }
+
+  const dayNames = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+  const hoje = dayNames[day];
+
+  // ── Passo 1: Vega define a direção e posta em #marketing ──
+  const vegaPrompt = `
+É ${hoje}. Defina a direção de Stories para hoje.
+
+CONTEXTO DO DIA (obrigatório seguir):
+- Tema: ${dayInfo.tema}
+- Pilar: ${dayInfo.pilar}
+- Ângulo: ${dayInfo.angulo}
+- Gancho para fechar: "${dayInfo.gancho}"
+
+Entregue:
+1. Mensagem-chave do dia (1 frase concreta — não vaga, não motivacional)
+2. Ângulo específico para hoje
+3. Instrução para People: o que executar, quantos frames, qual sticker usar (enquete ou caixinha), onde o gancho entra
+4. Instrução para Alex: formato visual do frame 1
+
+Máximo 100 palavras. Sem emoji por linha. Sem "estratégia". Fale como Vega — direto, executável.
+No final, chame People pelo nome: "@People — sua vez."
+`.trim();
+
+  let vegaText;
+  try {
+    vegaText = await callClaude(AGENTS.vega.system, vegaPrompt, 300);
+  } catch (err) {
+    logger.error('❌ Erro ao chamar Vega para Stories:', err.message);
+    return;
+  }
+
+  // Vega posta em #marketing — captura ts para thread
+  let vegaPost;
+  try {
+    vegaPost = await slackClient.chat.postMessage({
+      channel: CHANNELS.marketing,
+      text: `${AGENTS.vega.icon} *Vega — direção de Stories (${hoje})*\n\n${vegaText}`,
+    });
+    logger.info('✅ Vega postou direção em #marketing');
+  } catch (err) {
+    logger.error('❌ Erro ao postar Vega em #marketing:', err.message);
+    return;
+  }
+
+  // ── Passo 2: People responde na thread do #marketing com a sequência ──
+  const peoplePrompt = `
+Vega acabou de definir a direção de Stories para hoje (${hoje}):
+
+---
+${vegaText}
+---
+
+REFERÊNCIA DO DIA:
+- Tema: ${dayInfo.tema}
+- Pilar: ${dayInfo.pilar}
+- Ângulo: ${dayInfo.angulo}
+
+Com base nessa direção, entregue a sequência completa de Stories para hoje.
+
+ESTRUTURA OBRIGATÓRIA (7 frames):
+Frame 1 — HOOK: máximo 2 frases. Diagnóstico direto ou inversão. NUNCA começa com saudação ou "Hoje vou falar sobre".
+Frame 2 — CONTEXTO: expande o problema. Introduz sticker interativo (enquete ou caixinha) — escreva a pergunta exata do sticker.
+Frame 3 — STICKER: o sticker interativo em ação. Inclua a pergunta exata se for caixinha, ou as 2 opções se for enquete.
+Frame 4 — DESENVOLVIMENTO: aprofunda, mantém a tensão. Máximo 3 frases.
+Frame 5 — VIRADA: o ponto onde a perspectiva muda.
+Frame 6 (penúltimo) — CTA: 1 instrução natural. Não "clica no link". Sim: "me responde aqui", "manda DM com X", "salva esse".
+Frame 7 — FECHAMENTO: reforço emocional ou gancho para amanhã: "${dayInfo.gancho}"
+
+FORMATO NO SLACK:
+*Frame 1 — HOOK*
+[texto do frame]
+
+*Frame 2 — CONTEXTO*
+[texto + instrução do sticker]
+
+... e assim por diante.
+
+No final: briefing para Alex em 1 linha (formato visual do frame 1).
+
+Aplique o teste do hook antes de entregar: "Uma coach genérica poderia assinar esse Frame 1?" — se sim, reescreve.
+Nenhuma palavra proibida. Nenhuma frase de transição de IA.
+`.trim();
+
+  let peopleText;
+  try {
+    peopleText = await callClaude(AGENTS.people.system, peoplePrompt, 600);
+  } catch (err) {
+    logger.error('❌ Erro ao chamar People para Stories:', err.message);
+    return;
+  }
+
+  // People responde na thread de Vega em #marketing
+  try {
+    await slackClient.chat.postMessage({
+      channel: CHANNELS.marketing,
+      thread_ts: vegaPost.ts,
+      text: `${AGENTS.people.icon} *People — sequência pronta*\n\n${peopleText}`,
+    });
+    logger.info('✅ People respondeu na thread de #marketing');
+  } catch (err) {
+    logger.error('❌ Erro ao postar People em #marketing:', err.message);
+    return;
+  }
+
+  // ── Loop: Vega revisa → People refaz até aprovação (máx 3 tentativas) ──
+  const MAX_TENTATIVAS = 3;
+  let tentativa = 0;
+  let aprovado = false;
+  let sequenciaFinal = peopleText;
+  let feedbackVega = '';
+
+  while (tentativa < MAX_TENTATIVAS && !aprovado) {
+    tentativa++;
+
+    const vegaReviewPrompt = `
+People entregou a sequência de Stories para hoje (${hoje}). Você é a chefe dela — revise com rigor.${tentativa > 1 ? ` Esta é a tentativa ${tentativa} — ela já ajustou baseada no seu feedback anterior.` : ''}
+
+DIREÇÃO QUE VOCÊ DEU:
+---
+${vegaText}
+---
+
+SEQUÊNCIA QUE PEOPLE ENTREGOU:
+---
+${sequenciaFinal}
+---
+
+Revise frame por frame verificando:
+1. O Frame 1 passa no teste do hook? ("Uma coach genérica poderia assinar isso?" — se sim, reprovar)
+2. A sequência segue o tema e ângulo que você definiu?
+3. Tem alguma palavra proibida (real, presença, jornada, transformação, audiência, engajar, etc)?
+4. O sticker interativo está nos frames 2–3?
+5. O CTA está no penúltimo frame?
+6. O gancho de fechamento está correto: "${dayInfo.gancho}"
+
+Se aprovado: comece com "✅ Aprovado" + 1 frase sobre o que ficou forte.
+Se precisar de ajuste: aponte exatamente qual frame e o que reescrever. Seja direta e específica — People vai refazer com base no seu feedback.
+Máximo 80 palavras. Fale como Vega.
+`.trim();
+
+    let vegaReviewText;
+    try {
+      vegaReviewText = await callClaude(AGENTS.vega.system, vegaReviewPrompt, 250);
+    } catch (err) {
+      logger.error(`❌ Erro na revisão de Vega (tentativa ${tentativa}):`, err.message);
+      break;
+    }
+
+    await slackClient.chat.postMessage({
+      channel: CHANNELS.marketing,
+      thread_ts: vegaPost.ts,
+      text: `${AGENTS.vega.icon} *Vega — revisão${tentativa > 1 ? ` (tentativa ${tentativa})` : ''}*\n\n${vegaReviewText}`,
+    }).catch(err => logger.error('Erro ao postar revisão Vega:', err.message));
+
+    aprovado = vegaReviewText.toLowerCase().includes('aprovado');
+    feedbackVega = vegaReviewText;
+
+    if (aprovado) break;
+
+    // Vega reprovou — People refaz
+    if (tentativa < MAX_TENTATIVAS) {
+      const peopleRefazPrompt = `
+Vega reprovou sua sequência de Stories e pediu ajustes. Refaça incorporando o feedback dela.
+
+DIREÇÃO ORIGINAL DE VEGA:
+---
+${vegaText}
+---
+
+SUA SEQUÊNCIA ANTERIOR:
+---
+${sequenciaFinal}
+---
+
+FEEDBACK DE VEGA:
+---
+${feedbackVega}
+---
+
+Reescreva a sequência completa de 7 frames incorporando todos os ajustes que Vega pediu.
+Mantenha a mesma estrutura (Frame 1 HOOK → Frame 2 CONTEXTO → Frame 3 STICKER → Frame 4 DESENVOLVIMENTO → Frame 5 VIRADA → Frame 6 CTA → Frame 7 FECHAMENTO).
+Aplique o teste do hook antes de entregar. Nenhuma palavra proibida.
+`.trim();
+
+      let peopleRefazText;
+      try {
+        peopleRefazText = await callClaude(AGENTS.people.system, peopleRefazPrompt, 600);
+      } catch (err) {
+        logger.error(`❌ Erro ao People refazer (tentativa ${tentativa}):`, err.message);
+        break;
+      }
+
+      sequenciaFinal = peopleRefazText;
+
+      await slackClient.chat.postMessage({
+        channel: CHANNELS.marketing,
+        thread_ts: vegaPost.ts,
+        text: `${AGENTS.people.icon} *People — sequência refeita (tentativa ${tentativa + 1})*\n\n${peopleRefazText}`,
+      }).catch(err => logger.error('Erro ao postar People refazer:', err.message));
+    }
+  }
+
+  // ── Após o loop: envia para #aprovacoes se aprovado ──
+  if (aprovado) {
+    await slackClient.chat.postMessage({
+      channel: CHANNELS.aprovacoes,
+      text: `${AGENTS.people.icon} *Stories de hoje (${hoje}) — aprovado por Vega*\n\n${sequenciaFinal}\n\n---\n_Discussão completa em #marketing. ✅ para aprovar ou responda aqui para ajustar._`,
+    }).catch(err => logger.error('Erro ao postar em #aprovacoes:', err.message));
+    logger.info(`✅ Stories aprovados por Vega (${tentativa} tentativa(s)) — postado em #aprovacoes`);
+  } else {
+    // Esgotou as tentativas sem aprovação — avisa Talita
+    await slackClient.chat.postMessage({
+      channel: CHANNELS.aprovacoes,
+      text: `⚠️ *Stories de hoje (${hoje}) — não aprovados por Vega após ${MAX_TENTATIVAS} tentativas.*\nRevise a thread em #marketing e decida como prosseguir.`,
+    }).catch(err => logger.error('Erro ao postar aviso em #aprovacoes:', err.message));
+    logger.warn(`⚠️ Stories não aprovados após ${MAX_TENTATIVAS} tentativas`);
+  }
+}
 
 /**
  * Executa uma rotina: chama o Claude e posta no canal do Slack.
@@ -169,15 +439,35 @@ function initScheduler(slackClient, logger) {
     }
   }, { timezone: 'America/Sao_Paulo' });
 
-  // ── 9h BRT: atualiza curadoria de notícias ──
-  cron.schedule('0 9 * * *', async () => {
-    logger.info('📰 Cron 9h — atualizando curadoria');
+  // ── 6h BRT: atualiza curadoria + pautas IA + envia para #marketing ──
+  cron.schedule('0 6 * * *', async () => {
+    logger.info('📰 Cron 6h — atualizando curadoria e gerando pautas');
     try {
       await refreshAll();
-      logger.info('✅ Curadoria atualizada');
+      logger.info('✅ Curadoria e pautas atualizadas');
+
+      const pautas = getPautas();
+      if (!pautas || pautas.length === 0) return;
+
+      // Monta mensagem com top 3 pautas para #marketing
+      const linhas = pautas.slice(0, 3).map((p, i) => {
+        return `*${i + 1}. ${p.titulo}* — _${p.fonte}_\n→ *ICP:* ${p.relevancia}\n→ *Ângulo Talita:* ${p.angulo}\n→ *Hook pronto:* "${p.hook}"`;
+      }).join('\n\n');
+
+      await slackClient.chat.postMessage({
+        channel: CHANNELS.marketing,
+        text: `✍️ *People — Pautas quentes de hoje (${new Date().toLocaleDateString('pt-BR')})*\n\nEssas são as 3 mais relevantes para o ICP. Use como base para Stories, Reel ou carrossel.\n\n${linhas}\n\n_Ver todas em: https://slack-soab.onrender.com/curadoria_`,
+      });
+      logger.info('✅ Pautas enviadas para #marketing');
     } catch (err) {
-      logger.error('❌ Erro na curadoria:', err.message);
+      logger.error('❌ Erro na curadoria 6h:', err.message);
     }
+  }, { timezone: 'America/Sao_Paulo' });
+
+  // ── 8h BRT diário (seg–sab): Vega dirige → People entrega Stories em #marketing → resumo final em #aprovacoes ──
+  cron.schedule('5 8 * * 1-6', async () => {
+    logger.info('📱 Cron 8h05 — Rotina de Stories (Vega → People em #marketing → #aprovacoes)');
+    await runStoriesApprovalRoutine(slackClient, logger);
   }, { timezone: 'America/Sao_Paulo' });
 
   // ── 9h30 toda segunda: Conselho Estratégico com Jay ──
@@ -260,7 +550,7 @@ Feche com:
     }
   }, { timezone: 'America/Sao_Paulo' });
 
-  logger.info('🗓️ Scheduler iniciado — 6h30 briefing | 8h rotinas | 9h curadoria | 9h30 seg conselho | 18h métricas | 0h cleanup');
+  logger.info('🗓️ Scheduler iniciado — 6h curadoria+pautas | 6h30 briefing | 8h rotinas+stories | 9h30 seg conselho | 18h métricas | 0h cleanup');
 }
 
-module.exports = { initScheduler };
+module.exports = { initScheduler, runStoriesApprovalRoutine };

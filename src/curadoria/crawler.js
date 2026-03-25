@@ -1,5 +1,6 @@
 const Parser = require('rss-parser');
 const { FEEDS } = require('./feeds');
+const { gerarPautas } = require('./analisar');
 
 const parser = new Parser({
   timeout: 8000,
@@ -8,6 +9,7 @@ const parser = new Parser({
 });
 
 let cache = {};
+let pautasCache = [];
 let lastUpdate = null;
 
 function stripHtml(str = '') {
@@ -51,11 +53,17 @@ async function refreshAll() {
   cache = newCache;
   lastUpdate = new Date();
   console.log(`✅ Curadoria OK — ${lastUpdate.toLocaleString('pt-BR')}`);
+
+  // Gera pautas com IA a partir de todos os artigos do dia
+  const todosArtigos = Object.values(newCache).flat();
+  pautasCache = await gerarPautas(todosArtigos);
+  console.log(`🧠 Pautas geradas: ${pautasCache.length}`);
 }
 
 function getCache() {
   return {
     data:         cache,
+    pautas:       pautasCache,
     lastUpdate:   lastUpdate ? lastUpdate.toLocaleString('pt-BR') : null,
     categories:   Object.entries(FEEDS).map(([key, cat]) => ({
       key,
@@ -66,10 +74,14 @@ function getCache() {
   };
 }
 
+function getPautas() {
+  return pautasCache;
+}
+
 function isCacheStale() {
   if (!lastUpdate) return true;
   const hours = (Date.now() - lastUpdate.getTime()) / 36e5;
   return hours >= 6;
 }
 
-module.exports = { refreshAll, getCache, isCacheStale };
+module.exports = { refreshAll, getCache, getPautas, isCacheStale };

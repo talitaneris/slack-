@@ -5,7 +5,7 @@ const path  = require('path');
 const { App, ExpressReceiver } = require('@slack/bolt');
 const { handleMention } = require('./handlers/mention');
 const { initScheduler } = require('./scheduler/routines');
-const { refreshAll, getCache, isCacheStale } = require('./curadoria/crawler');
+const { refreshAll, getCache, getPautas, isCacheStale } = require('./curadoria/crawler');
 const { registerApprovalHandler } = require('./handlers/approval');
 const { registerWebhooks } = require('./webhooks/index');
 
@@ -42,6 +42,16 @@ receiver.router.get('/curadoria/api', async (req, res) => {
   try {
     if (isCacheStale() || req.query.force) await refreshAll();
     res.json(getCache());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Pautas do dia com ângulo de posicionamento (geradas por IA)
+receiver.router.get('/curadoria/pautas', async (req, res) => {
+  try {
+    if (isCacheStale() || req.query.force) await refreshAll();
+    res.json({ pautas: getPautas(), lastUpdate: getCache().lastUpdate });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

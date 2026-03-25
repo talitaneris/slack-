@@ -12,19 +12,19 @@
       --pearl: #FBF9E4;
       --ocean: #5B88B2;
       --white: #ffffff;
-      --floor: #0d2240;
-      --wall: #0a1a30;
-      --desk-base: #1a3a5c;
-      --desk-border: #2a5080;
-      --room-border: #1e3f62;
-      --online: #3ecf8e;
+      --floor: #f0f4f8;
+      --wall: #e8edf3;
+      --desk-base: #ffffff;
+      --desk-border: #ccd8e8;
+      --room-border: #c4d2e4;
+      --online: #2bb67d;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: var(--noir);
-      color: var(--pearl);
+      background: #f5f7fa;
+      color: var(--midnight);
       font-family: 'Montserrat', sans-serif;
       min-height: 100vh;
       overflow-x: hidden;
@@ -32,8 +32,8 @@
 
     /* ── HEADER ── */
     header {
-      background: var(--noir);
-      border-bottom: 1px solid #1a1a1a;
+      background: #ffffff;
+      border-bottom: 1px solid var(--room-border);
       padding: 16px 32px;
       display: flex;
       align-items: center;
@@ -51,18 +51,18 @@
 
     .logo-mark {
       width: 36px; height: 36px;
-      background: var(--pearl);
+      background: var(--midnight);
       border-radius: 8px;
       display: flex; align-items: center; justify-content: center;
       font-size: 18px; font-weight: 800;
-      color: var(--noir);
+      color: #ffffff;
       letter-spacing: -1px;
     }
 
     .logo-text h1 {
       font-size: 15px;
       font-weight: 800;
-      color: var(--pearl);
+      color: var(--midnight);
       letter-spacing: -0.3px;
     }
 
@@ -133,6 +133,7 @@
       border-radius: 16px;
       padding: 20px;
       position: relative;
+      box-shadow: 0 1px 4px rgba(18,44,79,0.06);
     }
 
     .room-label {
@@ -172,18 +173,18 @@
 
     .ceo-desk {
       width: 56px; height: 56px;
-      background: var(--pearl);
+      background: var(--midnight);
       border-radius: 14px;
       display: flex; align-items: center; justify-content: center;
       font-size: 28px;
       flex-shrink: 0;
-      box-shadow: 0 0 30px rgba(251,249,228,0.15);
+      box-shadow: 0 4px 16px rgba(18,44,79,0.18);
     }
 
     .ceo-info h2 {
       font-size: 20px;
       font-weight: 800;
-      color: var(--pearl);
+      color: var(--midnight);
       letter-spacing: -0.5px;
     }
 
@@ -208,7 +209,7 @@
     .ceo-stat .num {
       font-size: 28px;
       font-weight: 800;
-      color: var(--pearl);
+      color: var(--midnight);
       letter-spacing: -1px;
       line-height: 1;
     }
@@ -240,25 +241,38 @@
       cursor: pointer;
       transition: all 0.2s;
       position: relative;
+      box-shadow: 0 1px 3px rgba(18,44,79,0.06);
     }
 
     .desk:hover {
-      background: #1f4570;
+      background: #e8f0f9;
       border-color: var(--ocean);
       transform: translateX(3px);
     }
 
     .desk.active {
-      background: #1f4570;
-      border-color: var(--pearl);
+      background: #ddeaf7;
+      border-color: var(--midnight);
     }
 
     .desk-icon {
-      width: 36px; height: 36px;
-      border-radius: 9px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px;
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      overflow: hidden;
       flex-shrink: 0;
+      border: 2px solid var(--desk-border);
+      transition: border-color 0.2s;
+    }
+
+    .desk:hover .desk-icon,
+    .desk.active .desk-icon {
+      border-color: var(--ocean);
+    }
+
+    .desk-icon img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
     }
 
     .desk-info { flex: 1; min-width: 0; }
@@ -266,7 +280,7 @@
     .desk-name {
       font-size: 13px;
       font-weight: 700;
-      color: var(--pearl);
+      color: var(--midnight);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -291,12 +305,12 @@
     }
 
     /* Desk icon backgrounds por área */
-    .area-estrategia .desk-icon { background: rgba(91,136,178,0.15); }
-    .area-marketing .desk-icon { background: rgba(167,139,250,0.15); }
-    .area-vendas .desk-icon { background: rgba(249,115,22,0.15); }
-    .area-cs .desk-icon { background: rgba(62,207,142,0.15); }
-    .area-ops .desk-icon { background: rgba(251,249,228,0.1); }
-    .area-pessoal .desk-icon { background: rgba(251,249,228,0.1); }
+    .area-estrategia .desk-icon { background: rgba(91,136,178,0.1); }
+    .area-marketing .desk-icon { background: rgba(167,139,250,0.1); }
+    .area-vendas .desk-icon { background: rgba(249,115,22,0.1); }
+    .area-cs .desk-icon { background: rgba(62,207,142,0.1); }
+    .area-ops .desk-icon { background: rgba(18,44,79,0.06); }
+    .area-pessoal .desk-icon { background: rgba(18,44,79,0.06); }
 
     /* ── PAINEL LATERAL ── */
     .side-panel {
@@ -307,11 +321,12 @@
     }
 
     .panel-empty {
-      background: var(--floor);
+      background: #ffffff;
       border: 1px solid var(--room-border);
       border-radius: 16px;
       padding: 40px 24px;
       text-align: center;
+      box-shadow: 0 1px 4px rgba(18,44,79,0.06);
     }
 
     .panel-empty .hint-icon {
@@ -328,11 +343,12 @@
     }
 
     .agent-panel {
-      background: var(--floor);
+      background: #ffffff;
       border: 1px solid var(--room-border);
       border-radius: 16px;
       overflow: hidden;
       display: none;
+      box-shadow: 0 2px 12px rgba(18,44,79,0.1);
     }
 
     .agent-panel.visible { display: block; }
@@ -347,24 +363,30 @@
     }
 
     .panel-icon {
-      width: 52px; height: 52px;
-      border-radius: 14px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 26px;
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      overflow: hidden;
       flex-shrink: 0;
+      border: 2px solid var(--room-border);
+    }
+
+    .panel-icon img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
     }
 
     .panel-meta h2 {
       font-size: 20px;
       font-weight: 800;
-      color: var(--pearl);
+      color: #ffffff;
       letter-spacing: -0.5px;
     }
 
     .panel-meta .panel-role {
       font-size: 11px;
       font-weight: 500;
-      color: var(--ocean);
+      color: rgba(255,255,255,0.65);
       margin-top: 3px;
     }
 
@@ -521,7 +543,7 @@
         <div class="room-label">📊 Estratégia & Dados</div>
         <div class="desks">
           <div class="desk" onclick="openAgent('jay')">
-            <div class="desk-icon">📊</div>
+            <div class="desk-icon"><img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Jay"></div>
             <div class="desk-info">
               <div class="desk-name">Jay</div>
               <div class="desk-role">Gestor de Receita</div>
@@ -529,7 +551,7 @@
             <div class="desk-status"></div>
           </div>
           <div class="desk" onclick="openAgent('lens')">
-            <div class="desk-icon">📈</div>
+            <div class="desk-icon"><img src="https://randomuser.me/api/portraits/women/44.jpg" alt="Lens"></div>
             <div class="desk-info">
               <div class="desk-name">Lens</div>
               <div class="desk-role">Estrategista de Dados</div>
@@ -537,7 +559,7 @@
             <div class="desk-status"></div>
           </div>
           <div class="desk" onclick="openAgent('mariah')">
-            <div class="desk-icon">🤝</div>
+            <div class="desk-icon"><img src="https://randomuser.me/api/portraits/women/26.jpg" alt="Mariah"></div>
             <div class="desk-info">
               <div class="desk-name">Mariah</div>
               <div class="desk-role">Assistente Pessoal</div>
@@ -552,7 +574,7 @@
         <div class="room-label">🎯 Marketing & Marca</div>
         <div class="desks">
           <div class="desk" onclick="openAgent('vega')">
-            <div class="desk-icon">⭐</div>
+            <div class="desk-icon"><img src="https://randomuser.me/api/portraits/women/68.jpg" alt="Vega"></div>
             <div class="desk-info">
               <div class="desk-name">Vega</div>
               <div class="desk-role">Estrategista de Marca</div>
@@ -560,7 +582,7 @@
             <div class="desk-status"></div>
           </div>
           <div class="desk" onclick="openAgent('people')">
-            <div class="desk-icon">✍️</div>
+            <div class="desk-icon"><img src="https://randomuser.me/api/portraits/women/58.jpg" alt="People"></div>
             <div class="desk-info">
               <div class="desk-name">People</div>
               <div class="desk-role">Social Media / Conteúdo</div>
@@ -568,7 +590,7 @@
             <div class="desk-status"></div>
           </div>
           <div class="desk" onclick="openAgent('alex')">
-            <div class="desk-icon">🎨</div>
+            <div class="desk-icon"><img src="https://randomuser.me/api/portraits/women/79.jpg" alt="Alex"></div>
             <div class="desk-info">
               <div class="desk-name">Alex</div>
               <div class="desk-role">Designer da Marca</div>
@@ -583,7 +605,7 @@
         <div class="room-label">💼 Vendas</div>
         <div class="desks">
           <div class="desk" onclick="openAgent('lia')">
-            <div class="desk-icon">🎯</div>
+            <div class="desk-icon"><img src="https://randomuser.me/api/portraits/women/19.jpg" alt="Lia"></div>
             <div class="desk-info">
               <div class="desk-name">Lia</div>
               <div class="desk-role">Vendedora IA</div>
@@ -591,7 +613,7 @@
             <div class="desk-status"></div>
           </div>
           <div class="desk" onclick="openAgent('marta')">
-            <div class="desk-icon">📋</div>
+            <div class="desk-icon"><img src="https://randomuser.me/api/portraits/women/41.jpg" alt="Marta"></div>
             <div class="desk-info">
               <div class="desk-name">Marta</div>
               <div class="desk-role">Analista Comercial</div>
@@ -606,7 +628,7 @@
         <div class="room-label">🌱 Produto & CS</div>
         <div class="desks">
           <div class="desk" onclick="openAgent('mari')">
-            <div class="desk-icon">🌿</div>
+            <div class="desk-icon"><img src="https://randomuser.me/api/portraits/women/63.jpg" alt="Mari"></div>
             <div class="desk-info">
               <div class="desk-name">Mari</div>
               <div class="desk-role">Customer Success</div>
@@ -614,7 +636,7 @@
             <div class="desk-status"></div>
           </div>
           <div class="desk" onclick="openAgent('paulo')">
-            <div class="desk-icon">📐</div>
+            <div class="desk-icon"><img src="https://randomuser.me/api/portraits/men/45.jpg" alt="Paulo"></div>
             <div class="desk-info">
               <div class="desk-name">Paulo</div>
               <div class="desk-role">DI de Produto</div>
@@ -622,7 +644,7 @@
             <div class="desk-status"></div>
           </div>
           <div class="desk" onclick="openAgent('sofia')">
-            <div class="desk-icon">💰</div>
+            <div class="desk-icon"><img src="https://randomuser.me/api/portraits/women/5.jpg" alt="Sofia"></div>
             <div class="desk-info">
               <div class="desk-name">Sofia</div>
               <div class="desk-role">Financeiro</div>
@@ -637,7 +659,7 @@
         <div class="room-label">⚙️ Operações</div>
         <div class="desks">
           <div class="desk" onclick="openAgent('lua')">
-            <div class="desk-icon">🌙</div>
+            <div class="desk-icon"><img src="https://randomuser.me/api/portraits/women/33.jpg" alt="Lua"></div>
             <div class="desk-info">
               <div class="desk-name">Lua</div>
               <div class="desk-role">Gestora de Operações</div>
@@ -688,7 +710,7 @@
 <script>
   const AGENTS = {
     jay: {
-      icon: '📊', name: 'Jay', role: 'Gestor de Receita',
+      icon: '📊', photo: 'https://randomuser.me/api/portraits/men/32.jpg', name: 'Jay', role: 'Gestor de Receita',
       desc: 'Transforma estratégia de marca em receita real e previsível. Metodologia Jay Abraham. Não otimiza vaidade — otimiza o que converte em caixa.',
       commands: ['*dashboard','*oportunidades','*funil','*campanha','*meta','*modelo','*ltv','*estrategia-mensal','*briefing'],
       channels: ['#gestao','#vendas'],
@@ -696,7 +718,7 @@
       iconBg: 'rgba(91,136,178,0.2)'
     },
     lens: {
-      icon: '📈', name: 'Lens', role: 'Estrategista de Dados',
+      icon: '📈', photo: 'https://randomuser.me/api/portraits/women/44.jpg', name: 'Lens', role: 'Estrategista de Dados',
       desc: 'Transforma número em decisão. Lê padrões onde outros veem ruído. Cada insight tem um "e o que fazemos com isso?"',
       commands: ['*metricas','*dashboard','*comportamento','*conversao','*retencao','*diagnostico','*relatorio','*instagram'],
       channels: ['#gestao'],
@@ -704,7 +726,7 @@
       iconBg: 'rgba(6,182,212,0.2)'
     },
     mariah: {
-      icon: '🤝', name: 'Mariah', role: 'Assistente Pessoal',
+      icon: '🤝', photo: 'https://randomuser.me/api/portraits/women/26.jpg', name: 'Mariah', role: 'Assistente Pessoal',
       desc: 'Agenda, filtro de demandas, briefing de reunião e delegação. Protege o foco da Talita e garante que nada importante seja esquecido.',
       commands: ['*agenda','*prioridade','*delegar','*briefing','*pagamentos'],
       channels: ['#talita'],
@@ -712,7 +734,7 @@
       iconBg: 'rgba(251,249,228,0.1)'
     },
     vega: {
-      icon: '⭐', name: 'Vega', role: 'Estrategista de Marca',
+      icon: '⭐', photo: 'https://randomuser.me/api/portraits/women/68.jpg', name: 'Vega', role: 'Estrategista de Marca',
       desc: 'Define como a TNeris é percebida, comunicada e crescida no mercado. Crescimento de audiência que não gera leads não é crescimento.',
       commands: ['*posicionamento','*autoridade','*audiencia','*tendencias','*comunicacao','*aprovar'],
       channels: ['#marketing'],
@@ -720,7 +742,7 @@
       iconBg: 'rgba(167,139,250,0.2)'
     },
     people: {
-      icon: '✍️', name: 'People', role: 'Social Media / Conteúdo',
+      icon: '✍️', photo: 'https://randomuser.me/api/portraits/women/58.jpg', name: 'People', role: 'Social Media / Conteúdo',
       desc: 'Cria conteúdo estratégico com intenção — não conteúdo genérico. Cada peça ancorada no território intelectual da Talita.',
       commands: ['*ideia','*roteiro','*carrossel','*legenda','*stories','*editorial','*ganchos','*pauta','*cortes','*humanizar'],
       channels: ['#marketing','#aprovacoes'],
@@ -728,7 +750,7 @@
       iconBg: 'rgba(167,139,250,0.2)'
     },
     alex: {
-      icon: '🎨', name: 'Alex', role: 'Designer da Marca',
+      icon: '🎨', photo: 'https://randomuser.me/api/portraits/women/79.jpg', name: 'Alex', role: 'Designer da Marca',
       desc: 'Dá forma visual a tudo que a TNeris comunica. Opera em 3 modos: Canva MCP → HTML carrossel → Nanobanana. Montserrat, paleta TNeris, zero ornamento.',
       commands: ['*carrossel','*post','*imagem','*apresentacao','*material','*identidade','*adaptar','*banco'],
       channels: ['#marketing','#aprovacoes'],
@@ -736,7 +758,7 @@
       iconBg: 'rgba(236,72,153,0.2)'
     },
     lia: {
-      icon: '🎯', name: 'Lia', role: 'Vendedora IA',
+      icon: '🎯', photo: 'https://randomuser.me/api/portraits/women/19.jpg', name: 'Lia', role: 'Vendedora IA',
       desc: 'Qualificação, objeções e fechamento. Metodologia Sandler (7 passos). Conexão real antes de qualquer pitch.',
       commands: ['*qualificar','*objecao','*fechar','*follow-up','*script','*r1'],
       channels: ['#vendas'],
@@ -744,7 +766,7 @@
       iconBg: 'rgba(249,115,22,0.2)'
     },
     marta: {
-      icon: '📋', name: 'Marta', role: 'Analista Comercial',
+      icon: '📋', photo: 'https://randomuser.me/api/portraits/women/41.jpg', name: 'Marta', role: 'Analista Comercial',
       desc: 'Score de leads, priorização de pipeline e handoff Lia → Mari. Garante que nenhum lead quente esfrie por falta de acompanhamento.',
       commands: ['*pipeline','*score','*priorizar','*handoff','*relatorio'],
       channels: ['#vendas'],
@@ -752,7 +774,7 @@
       iconBg: 'rgba(249,115,22,0.2)'
     },
     mari: {
-      icon: '🌿', name: 'Mari', role: 'Customer Success',
+      icon: '🌿', photo: 'https://randomuser.me/api/portraits/women/63.jpg', name: 'Mari', role: 'Customer Success',
       desc: 'Jornada D0–D180, retenção, renovação e saúde das mentoradas. Cada mentorada tem uma trajetória — Mari acompanha cada etapa.',
       commands: ['*onboarding','*saude','*retencao','*renovacao','*d30','*d90','*d180'],
       channels: ['#produto'],
@@ -760,7 +782,7 @@
       iconBg: 'rgba(62,207,142,0.2)'
     },
     paulo: {
-      icon: '📐', name: 'Paulo', role: 'DI de Produto',
+      icon: '📐', photo: 'https://randomuser.me/api/portraits/men/45.jpg', name: 'Paulo', role: 'DI de Produto',
       desc: 'Estrutura da A Tribus, material didático, exercícios e jornada de transformação. Conteúdo que gera resultado real, não só conhecimento.',
       commands: ['*modulo','*exercicio','*material','*jornada','*aula'],
       channels: ['#produto'],
@@ -768,7 +790,7 @@
       iconBg: 'rgba(139,92,246,0.2)'
     },
     sofia: {
-      icon: '💰', name: 'Sofia', role: 'Financeiro',
+      icon: '💰', photo: 'https://randomuser.me/api/portraits/women/5.jpg', name: 'Sofia', role: 'Financeiro',
       desc: 'Faturamento, MRR, inadimplência, recorrência e fluxo de caixa. Nenhum número fica solto sem virar decisão.',
       commands: ['*mrr','*inadimplencia','*faturamento','*recorrencia','*fluxo','*relatorio'],
       channels: ['#financeiro'],
@@ -776,7 +798,7 @@
       iconBg: 'rgba(34,197,94,0.2)'
     },
     lua: {
-      icon: '🌙', name: 'Lua', role: 'Gestora de Operações',
+      icon: '🌙', photo: 'https://randomuser.me/api/portraits/women/33.jpg', name: 'Lua', role: 'Gestora de Operações',
       desc: 'Backlog, roteamento, status do squad e debrief semanal. Garante que o squad funcione como sistema, não como caos.',
       commands: ['*status','*prioridade','*backlog','*rotear','*debrief','*semana'],
       channels: ['#squadgeral','#talita'],
@@ -797,8 +819,7 @@
     event.currentTarget.classList.add('active');
 
     // Preenche painel
-    document.getElementById('p-icon').textContent = a.icon;
-    document.getElementById('p-icon').style.background = a.iconBg;
+    document.getElementById('p-icon').innerHTML = `<img src="${a.photo}" alt="${a.name}">`;
     document.getElementById('p-name').textContent = a.name;
     document.getElementById('p-role').textContent = a.role;
     document.getElementById('p-desc').textContent = a.desc;
