@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --midnight: #122C4F;
+    --pearl: #FBF9E4;
+    --gold: #C9A84C;
+    --ocean: #5B88B2;
+    --ocean-light: #A8C4DC;
+    --white: #FFFFFF;
+    --gray: #8A9BB0;
+    --black: #0A0A0A;
+    --border: #DDE3EA;
+    --red: #C0392B;
+    --green: #1E7D45;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Montserrat', sans-serif;
+    color: var(--black);
+    background: var(--white);
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  /* ── BARRA DE PROGRESSO ─────────────────────────────── */
+  /* Opção A (ativa): fundo pérola — claro, refinado       */
+  /* Opção B: troque --prog-bg para #5B88B2 (ocean) e     */
+  /*          --prog-text para #FFFFFF                     */
+  .progresso-bloco {
+    background: #5B88B2;
+    padding: 20px 48px;
+    border-bottom: none;
+  }
+  .progresso-topo {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .progresso-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--white);
+    font-weight: 700;
+  }
+  .progresso-info {
+    font-size: 11px;
+    color: rgba(255,255,255,0.75);
+    font-weight: 500;
+  }
+  .progresso-bar-bg {
+    background: rgba(255,255,255,0.2);
+    border-radius: 100px;
+    height: 4px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .progresso-bar-fill {
+    background: var(--gold);
+    height: 4px;
+    border-radius: 100px;
+  }
+  .enc-lista {
+    display: flex;
+    gap: 6px;
+  }
+  .enc-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .enc-circulo {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.35);
+    background: transparent;
+  }
+  .enc-circulo.feito {
+    background: var(--midnight);
+    border-color: var(--midnight);
+    color: var(--white);
+  }
+  .enc-circulo.atual {
+    border-color: var(--white);
+    color: var(--white);
+    background: transparent;
+    font-weight: 800;
+  }
+  .enc-label {
+    font-size: 9px;
+    letter-spacing: 0.5px;
+    color: rgba(255,255,255,0.35);
+    text-align: center;
+    text-transform: uppercase;
+    line-height: 1.3;
+  }
+  .enc-label.feito { color: rgba(255,255,255,0.7); }
+  .enc-label.atual { color: var(--white); font-weight: 700; }
+
+  /* ── CABEÇALHO ─────────────────────────────────────── */
+  .header {
+    background: var(--white);
+    padding: 40px 48px 32px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-meta {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--ocean);
+    font-weight: 600;
+    margin-bottom: 14px;
+  }
+  .header h1 {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--midnight);
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+    margin-bottom: 6px;
+  }
+  .header-sub {
+    font-size: 13px;
+    color: var(--gray);
+    font-weight: 500;
+  }
+  .header-data {
+    font-size: 11px;
+    color: var(--gray);
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* ── CONTEÚDO ──────────────────────────────────────── */
+  .conteudo { padding: 40px 48px; }
+
+  h2 {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--ocean);
+    margin-top: 44px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h2:first-child { margin-top: 0; }
+
+  h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--midnight);
+    margin-bottom: 6px;
+    margin-top: 20px;
+  }
+
+  p { margin-bottom: 10px; color: #333; }
+  ul { padding-left: 18px; margin-bottom: 10px; }
+  li { margin-bottom: 5px; color: #444; }
+  strong { font-weight: 700; color: var(--midnight); }
+  hr { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
+  a { color: var(--ocean); }
+
+  /* ── TESE ──────────────────────────────────────────── */
+  .bloco-tese {
+    background: var(--midnight);
+    color: var(--white);
+    padding: 22px 28px;
+    border-radius: 6px;
+    margin: 20px 0 28px;
+    font-size: 15px;
+    font-weight: 600;
+    font-style: italic;
+    text-align: center;
+    line-height: 1.5;
+    letter-spacing: -0.2px;
+  }
+  .bloco-tese span {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--ocean-light);
+    font-style: normal;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  /* ── BLOCOS ────────────────────────────────────────── */
+  .bloco {
+    background: var(--pearl);
+    border-left: 3px solid var(--midnight);
+    padding: 14px 18px;
+    margin: 12px 0;
+    border-radius: 0 4px 4px 0;
+    font-size: 12px;
+  }
+  .bloco-gold {
+    background: #FDF8ED;
+    border-left: 3px solid var(--gold);
+    padding: 14px 18px;
+    margin: 12px 0;
+    border-radius: 0 4px 4px 0;
+    font-size: 12px;
+  }
+
+  /* ── PILARES ───────────────────────────────────────── */
+  .pilares-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin: 14px 0;
+  }
+  .pilar-card {
+    background: var(--pearl);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--gold);
+    padding: 14px 16px;
+    border-radius: 0 0 4px 4px;
+  }
+  .pilar-card .num {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--border);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .pilar-card h3 { font-size: 13px; margin-top: 0; margin-bottom: 4px; }
+  .pilar-card p { font-size: 11px; color: var(--gray); margin: 0; }
+
+  /* ── CAMINHOS ──────────────────────────────────────── */
+  .caminhos-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 16px 0;
+  }
+  .caminho-card {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .caminho-header {
+    background: var(--midnight);
+    color: var(--white);
+    padding: 12px 16px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .pc-bloco {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .pc-bloco:last-child { border-bottom: none; }
+  .pc-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    display: block;
+  }
+  .pc-label.pros { color: #1E7D45; }
+  .pc-label.contras { color: var(--red); }
+  .pc-label.aguardando { color: var(--gray); }
+  .pc-bloco ul { margin-bottom: 0; }
+  .pc-bloco li { font-size: 12px; }
+  .aguardando-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #f5f5f5;
+    border: 1px dashed var(--border);
+    padding: 8px 14px;
+    border-radius: 4px;
+    font-size: 11px;
+    color: var(--gray);
+    font-style: italic;
+  }
+
+  /* ── FALHAS ────────────────────────────────────────── */
+  .falha-header {
+    display: grid;
+    grid-template-columns: 24px 1fr 1fr 140px;
+    gap: 14px;
+    padding: 8px 0;
+    border-bottom: 2px solid var(--midnight);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--gray);
+  }
+  .falha-item {
+    display: grid;
+    grid-template-columns: 24px 1fr 1fr 140px;
+    gap: 14px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--border);
+    align-items: start;
+    font-size: 12px;
+  }
+  .falha-item:last-child { border-bottom: none; }
+  .falha-num { color: var(--gray); font-weight: 700; font-size: 11px; padding-top: 2px; }
+  .falha-texto { color: #333; line-height: 1.5; }
+  .falha-solucao { color: #555; font-size: 11px; line-height: 1.5; font-style: italic; }
+  .status-badge {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 100px;
+    text-align: center;
+    white-space: nowrap;
+    display: inline-block;
+  }
+  .status-nao-iniciado { background: #F0F0F0; color: #888; }
+  .status-em-definicao { background: #E3EEF7; color: #2a5f8a; }
+  .status-aguardando { background: #FFF8E1; color: #E67E22; }
+  .status-concluido { background: #E8F5E9; color: #1E7D45; }
+
+  /* ── BASELINE ──────────────────────────────────────── */
+  .baseline-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 14px 0;
+  }
+  .baseline-card {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .baseline-header {
+    padding: 10px 16px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--white);
+  }
+  .baseline-d0 .baseline-header { background: var(--red); }
+  .baseline-d90 .baseline-header { background: var(--green); }
+  .baseline-body { padding: 14px 16px; }
+  .baseline-body li { font-size: 12px; margin-bottom: 7px; color: #444; }
+  .baseline-body li:last-child { margin-bottom: 0; }
+
+  /* ── MAPA ──────────────────────────────────────────── */
+  .mapa-link {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--pearl);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+    text-decoration: none;
+    color: var(--midnight);
+    margin: 14px 0;
+    font-size: 12px;
+  }
+  .mapa-link:hover { background: #f0ede0; }
+  .mapa-icone { font-size: 20px; }
+  .mapa-info strong { display: block; font-size: 13px; font-weight: 700; color: var(--midnight); margin-bottom: 2px; }
+  .mapa-info span { font-size: 11px; color: var(--gray); }
+
+  /* ── PRÓXIMOS PASSOS ───────────────────────────────── */
+  .pp-item {
+    display: flex;
+    gap: 14px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--border);
+    align-items: flex-start;
+  }
+  .pp-item:last-child { border-bottom: none; }
+  .pp-tag {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 100px;
+    white-space: nowrap;
+    margin-top: 1px;
+  }
+  .pp-talita { background: var(--midnight); color: var(--white); }
+  .pp-bruna { background: var(--ocean); color: var(--white); }
+  .pp-acao { font-size: 12px; color: #333; line-height: 1.5; }
+
+  /* ── RODAPÉ ────────────────────────────────────────── */
+  .rodape {
+    background: var(--midnight);
+    color: rgba(255,255,255,0.4);
+    padding: 16px 48px;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    display: flex;
+    justify-content: space-between;
+    margin-top: 48px;
+  }
+  .rodape strong { color: rgba(255,255,255,0.7); }
+</style>
+</head>
+<body>
+
+<!-- BARRA DE PROGRESSO -->
+<div class="progresso-bloco">
+  <div class="progresso-topo">
+    <span class="progresso-label">Progresso da Consultoria</span>
+    <span class="progresso-info" id="info-dias">—</span>
+  </div>
+  <div class="progresso-bar-bg">
+    <div class="progresso-bar-fill" id="barra" style="width:0%"></div>
+  </div>
+  <div class="enc-lista">
+    <div class="enc-item">
+      <div class="enc-circulo feito">1</div>
+      <span class="enc-label feito">Diagnóstico</span>
+    </div>
+    <div class="enc-item">
+      <div class="enc-circulo atual">2</div>
+      <span class="enc-label atual">Estruturação</span>
+    </div>
+    <div class="enc-item">
+      <div class="enc-circulo">3</div>
+      <span class="enc-label">Desenho</span>
+    </div>
+    <div class="enc-item">
+      <div class="enc-circulo">4</div>
+      <span class="enc-label">Entrega</span>
+    </div>
+    <div class="enc-item">
+      <div class="enc-circulo">5</div>
+      <span class="enc-label">Validação</span>
+    </div>
+    <div class="enc-item">
+      <div class="enc-circulo">6</div>
+      <span class="enc-label">Experiência</span>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var inicio = new Date(2026, 2, 27); /* mês 2 = março (0-indexed) */
+  var fim = new Date(2026, 5, 25);    /* 90 dias exatos */
+  var hoje = new Date();
+  hoje.setHours(0,0,0,0);
+  var total = 90;
+  var passados = Math.max(0, Math.round((hoje - inicio) / 86400000));
+  var restantes = Math.max(0, total - passados);
+  var pct = Math.min(100, Math.round((passados / total) * 100));
+  document.getElementById('barra').style.width = pct + '%';
+  var txtDias = passados === 1 ? '1 dia percorrido' : passados + ' dias percorridos';
+  var txtRest = restantes === 1 ? '1 dia restante' : restantes + ' dias restantes';
+  document.getElementById('info-dias').textContent = txtDias + ' · ' + txtRest + ' · ' + pct + '%';
+})();
+</script>
+
+<!-- CABEÇALHO -->
+<div class="header">
+  <div class="header-meta">Consultoria de Metodologia · 1º Encontro · Pós-reunião</div>
+  <h1>O que foi discutido<br>e os próximos passos</h1>
+  <p class="header-sub">Cliente: <strong>Bruna Della Flora</strong></p>
+  <div class="header-data">
+    <span>27 de março de 2026</span>
+    <span>Elaborado por <strong>Talita Neris</strong></span>
+  </div>
+</div>
+
+<div class="conteudo">
+
+<!-- TESE -->
+<div class="bloco-tese">
+  <span>Tese central</span>
+  "Quando a oferta é clara, a venda encurta."
+</div>
+
+<!-- O QUE FOI MAPEADO -->
+<h2>O que foi mapeado</h2>
+
+<p>No primeiro encontro fizemos o diagnóstico do negócio atual — produtos, entregáveis, o que funciona e o que precisa ser construído. Também levantamos dois caminhos possíveis para estruturar a metodologia.</p>
+
+<p><strong>O que você tem hoje:</strong></p>
+<ul>
+  <li>Advanced Pro — 6 reuniões + 12 meses · R$26.000</li>
+  <li>Advanced Light — 1 reunião + 6 meses · R$10.000</li>
+  <li>Base gravada com conteúdo de oferta, funil, copy, vendas e tráfego</li>
+  <li>Comunidade ativa com 49 nichos diferentes</li>
+  <li>Hospitais ao vivo de vendas e copy</li>
+</ul>
+
+<div class="bloco-gold">
+  <strong>Diagnóstico central:</strong> o produto entregue ao vivo é melhor do que o produto registrado na plataforma. O mentorado paga pelo Advanced e recebe uma experiência que depende da disponibilidade de Bruna, não de uma estrutura que funciona sem ela.
+</div>
+
+<hr>
+
+<!-- PILARES -->
+<h2>Pilares em discussão</h2>
+
+<p>Toda a sua metodologia se organiza em torno de 3 pilares. Serão definidos formalmente no 2º encontro.</p>
+
+<div class="pilares-grid">
+  <div class="pilar-card">
+    <div class="num">01</div>
+    <h3>Oferta</h3>
+    <p>O que você vende precisa ser entendido em 30 segundos</p>
+  </div>
+  <div class="pilar-card">
+    <div class="num">02</div>
+    <h3>Comunicação<br><span style="font-weight:400;color:var(--gray);font-size:11px;">ou Geração de Demanda</span></h3>
+    <p>A decidir no próximo encontro</p>
+  </div>
+  <div class="pilar-card">
+    <div class="num">03</div>
+    <h3>Vendas</h3>
+    <p>Da conversa ao fechamento — sem sessão estratégica</p>
+  </div>
+</div>
+
+<hr>
+
+<!-- BASELINE -->
+<h2>Baseline D0 → D90</h2>
+
+<div class="baseline-grid">
+  <div class="baseline-card baseline-d0">
+    <div class="baseline-header">D0 · 27/03/2026 · Hoje</div>
+    <div class="baseline-body">
+      <ul>
+        <li>2 produtos: Advanced Pro (R$26k) e Light (R$10k)</li>
+        <li>Metodologia sem estrutura formal documentada</li>
+        <li>Base gravada desatualizada</li>
+        <li>Sem jornada definida por fase</li>
+        <li>Sem onboarding formal</li>
+        <li>10 falhas mapeadas</li>
+        <li>Nome do método: indefinido</li>
+      </ul>
+    </div>
+  </div>
+  <div class="baseline-card baseline-d90">
+    <div class="baseline-header">D90 · 25/06/2026 · A preencher</div>
+    <div class="baseline-body" style="padding: 20px 16px;">
+      <p style="font-size:11px; color:var(--gray); font-style:italic; text-align:center; margin:0; line-height:1.6;">
+        Este campo será preenchido<br>no encerramento da consultoria.<br><br>
+        <span style="font-size:10px; letter-spacing:1px; text-transform:uppercase; font-style:normal; color:var(--green); font-weight:700;">25/06/2026</span>
+      </p>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<!-- CAMINHOS -->
+<h2>Os dois caminhos possíveis</h2>
+
+<p>Dois modelos foram apresentados. Os prós e contras de Talita estão preenchidos. Bruna responde com sua análise antes do próximo encontro.</p>
+
+<div class="caminhos-grid">
+
+  <div class="caminho-card">
+    <div class="caminho-header">Caminho 1 — Metodologia com Fases</div>
+    <div class="caminho-body">
+      <div class="pc-bloco">
+        <span class="pc-label pros">✦ Prós · Talita</span>
+        <ul>
+          <li>Bruna sabe onde cada mentorado está a qualquer momento</li>
+          <li>Gera renovação natural entre as fases</li>
+          <li>Resolve a comparação entre mentorados em momentos diferentes</li>
+          <li>Cada produto corresponde a uma fase — esteira clara</li>
+          <li>Cria argumento de venda para o nível mais alto</li>
+        </ul>
+      </div>
+      <div class="pc-bloco">
+        <span class="pc-label contras">✦ Contras · Talita</span>
+        <ul>
+          <li>Exige critério claro de avanço entre fases</li>
+          <li>Onboarding precisa ser mais estruturado</li>
+        </ul>
+      </div>
+      <div class="pc-bloco">
+        <span class="pc-label aguardando">✦ Análise · Bruna</span>
+        <div class="aguardando-tag">⏳ Aguardando sua resposta</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="caminho-card">
+    <div class="caminho-header">Caminho 2 — Trilha única + Ascensão</div>
+    <div class="caminho-body">
+      <div class="pc-bloco">
+        <span class="pc-label pros">✦ Prós · Talita</span>
+        <ul>
+          <li>Mais simples de comunicar para novos mentorados</li>
+          <li>Menos complexidade operacional</li>
+          <li>Onboarding mais direto</li>
+        </ul>
+      </div>
+      <div class="pc-bloco">
+        <span class="pc-label contras">✦ Contras · Talita</span>
+        <ul>
+          <li>Não resolve o problema de mentorados se comparando</li>
+          <li>Não cria gatilho de renovação claro</li>
+          <li>Não diferencia os produtos estruturalmente</li>
+          <li>ICPs em momentos diferentes geram frustração</li>
+        </ul>
+      </div>
+      <div class="pc-bloco">
+        <span class="pc-label aguardando">✦ Análise · Bruna</span>
+        <div class="aguardando-tag">⏳ Aguardando sua resposta</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<hr>
+
+<!-- FALHAS -->
+<h2>Diagnóstico — 10 falhas mapeadas</h2>
+
+<p>O que foi identificado no primeiro encontro. Cada ponto será endereçado ao longo dos encontros.</p>
+
+<div style="margin-top:14px;">
+  <div class="falha-header">
+    <span></span>
+    <span>Falha</span>
+    <span>Solução na Metodologia</span>
+    <span>Status</span>
+  </div>
+  <div class="falha-item">
+    <span class="falha-num">01</span>
+    <span class="falha-texto">Base gravada desatualizada em relação ao que você já ensina ao vivo</span>
+    <span class="falha-solucao">—</span>
+    <span><span class="status-badge status-nao-iniciado">Não Iniciado</span></span>
+  </div>
+  <div class="falha-item">
+    <span class="falha-num">02</span>
+    <span class="falha-texto">Diferença entre nichos de dor e desejo não está clara na base</span>
+    <span class="falha-solucao">—</span>
+    <span><span class="status-badge status-nao-iniciado">Não Iniciado</span></span>
+  </div>
+  <div class="falha-item">
+    <span class="falha-num">03</span>
+    <span class="falha-texto">Mentorado não tem jornada clara — não sabe onde está nem o que fazer agora</span>
+    <span class="falha-solucao">—</span>
+    <span><span class="status-badge status-nao-iniciado">Não Iniciado</span></span>
+  </div>
+  <div class="falha-item">
+    <span class="falha-num">04</span>
+    <span class="falha-texto">Você ensina ao vivo estratégias que não estão na base gravada</span>
+    <span class="falha-solucao">—</span>
+    <span><span class="status-badge status-nao-iniciado">Não Iniciado</span></span>
+  </div>
+  <div class="falha-item">
+    <span class="falha-num">05</span>
+    <span class="falha-texto">Sem aulas gravadas de correção de vendas e pitch</span>
+    <span class="falha-solucao">—</span>
+    <span><span class="status-badge status-nao-iniciado">Não Iniciado</span></span>
+  </div>
+  <div class="falha-item">
+    <span class="falha-num">06</span>
+    <span class="falha-texto">Falta módulo de gestão básica (finanças, pro labore)</span>
+    <span class="falha-solucao">Bônus: Módulo Gestão</span>
+    <span><span class="status-badge status-aguardando">Aguardando Validação</span></span>
+  </div>
+  <div class="falha-item">
+    <span class="falha-num">07</span>
+    <span class="falha-texto">Conteúdo muito técnico — falta conteúdo de mentalidade</span>
+    <span class="falha-solucao">—</span>
+    <span><span class="status-badge status-nao-iniciado">Não Iniciado</span></span>
+  </div>
+  <div class="falha-item">
+    <span class="falha-num">08</span>
+    <span class="falha-texto">Mentorados se comparam entre si gerando frustração</span>
+    <span class="falha-solucao">—</span>
+    <span><span class="status-badge status-nao-iniciado">Não Iniciado</span></span>
+  </div>
+  <div class="falha-item">
+    <span class="falha-num">09</span>
+    <span class="falha-texto">Sem onboarding definido — mentorado chega sem preparo para a 1ª reunião</span>
+    <span class="falha-solucao">—</span>
+    <span><span class="status-badge status-nao-iniciado">Não Iniciado</span></span>
+  </div>
+  <div class="falha-item">
+    <span class="falha-num">10</span>
+    <span class="falha-texto">Ancoragem de R$100k na comunicação que não está convertendo</span>
+    <span class="falha-solucao">—</span>
+    <span><span class="status-badge status-nao-iniciado">Não Iniciado</span></span>
+  </div>
+</div>
+
+<hr>
+
+<!-- MAPA MENTAL -->
+<h2>Mapa mental da consultoria</h2>
+
+<a class="mapa-link" href="https://www.mindmeister.com/app/map/3971392095" target="_blank">
+  <span class="mapa-icone">🗺</span>
+  <div class="mapa-info">
+    <strong>Workmap — Bruna Della Flora</strong>
+    <span>Abrir no MindMeister · atualizado a cada encontro</span>
+  </div>
+</a>
+
+<hr>
+
+<!-- PRÓXIMOS PASSOS -->
+<h2>Próximos passos</h2>
+
+<div style="margin-top:8px;">
+  <div class="pp-item">
+    <span class="pp-tag pp-bruna">Bruna</span>
+    <span class="pp-acao">Escrever seus prós e contras dos dois caminhos e encaminhar no grupo até <strong>31/03/2026</strong></span>
+  </div>
+  <div class="pp-item">
+    <span class="pp-tag pp-talita">Talita</span>
+    <span class="pp-acao">Trazer o esqueleto do produto estruturado para o 2º encontro</span>
+  </div>
+</div>
+
+<div class="bloco-gold" style="margin-top:24px;">
+  <strong>2º Encontro — Estruturação do Produto</strong><br>
+  Objetivo: sair com pilares, fases e esteira de produto definidos.
+</div>
+
+</div>
+
+<!-- RODAPÉ -->
+<div class="rodape">
+  <span>Cliente: <strong>Bruna Della Flora</strong></span>
+  <span>Consultoria <strong>TNeris</strong> · Talita Neris · 27/03/2026</span>
+</div>
+
+</body>
+</html>
