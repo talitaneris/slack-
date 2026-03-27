@@ -41,8 +41,7 @@ receiver.router.get('/escritorio', (req, res) => {
   receiver.router.get('/consultoriabrunadellaflora', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/consultoriabrunadellaflora.html'));                             
   });                                                       
-                                                                                                                 
-  Fica assim no arquivo:                                                                                         
+                                                                                                                                                                                                          
    
   // Escritório virtual — visualização dos agentes                                                               
   receiver.router.get('/escritorio', (req, res) => {        
