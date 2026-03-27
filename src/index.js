@@ -37,7 +37,24 @@ receiver.router.get('/curadoria', (req, res) => {
 receiver.router.get('/escritorio', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/escritorio.html'));
 });
-
+// Consultoria Bruna Della Flora                                                                               
+  receiver.router.get('/consultoriabrunadellaflora', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/consultoriabrunadellaflora.html'));                             
+  });                                                       
+                                                                                                                 
+  Fica assim no arquivo:                                                                                         
+   
+  // Escritório virtual — visualização dos agentes                                                               
+  receiver.router.get('/escritorio', (req, res) => {        
+    res.sendFile(path.join(__dirname, '../public/escritorio.html'));                                             
+  });
+                                                                                                                 
+  // Consultoria Bruna Della Flora                          
+  receiver.router.get('/consultoriabrunadellaflora', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/consultoriabrunadellaflora.html'));                             
+  });
+                                                                                                                 
+  receiver.router.get('/curadoria/api', async (req, res) => {                 
 receiver.router.get('/curadoria/api', async (req, res) => {
   try {
     if (isCacheStale() || req.query.force) await refreshAll();
