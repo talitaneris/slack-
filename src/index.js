@@ -37,6 +37,11 @@ require('dotenv').config();
   receiver.router.get('/escritorio', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/escritorio.html'));                                             
   });
+
+// Sistema de conteúdo
+receiver.router.get('/sistemadeconteudo', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/sistemadeconteudo.html'));
+});
                                                                                                                  
   // Consultoria Bruna Della Flora                          
   receiver.router.get('/consultoriabrunadellaflora', (req, res) => {
