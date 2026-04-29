@@ -17,639 +17,413 @@
     --red: #C0392B;
     --green: #1E7D45;
   }
-
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    font-family: 'Montserrat', sans-serif;
-    color: var(--black);
-    background: var(--white);
-    font-size: 13px;
-    line-height: 1.7;
-  }
-
-  /* ── BARRA DE PROGRESSO ─────────────────────────────── */
-  .progresso-bloco {
-    background: #5B88B2;
-    padding: 20px 48px;
-  }
-  .progresso-topo {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-  }
-  .progresso-label {
-    font-size: 10px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--white);
-    font-weight: 700;
-  }
-  .progresso-info {
-    font-size: 11px;
-    color: rgba(255,255,255,0.75);
-    font-weight: 500;
-  }
-  .progresso-bar-bg {
-    background: rgba(255,255,255,0.2);
-    border-radius: 100px;
-    height: 4px;
-    margin-bottom: 16px;
-    overflow: hidden;
-  }
-  .progresso-bar-fill {
-    background: var(--gold);
-    height: 4px;
-    border-radius: 100px;
-  }
-  .enc-lista {
-    display: flex;
-    gap: 6px;
-  }
-  .enc-item {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-  }
-  .enc-circulo {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    border: 1.5px solid rgba(255,255,255,0.3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    font-weight: 700;
-    color: rgba(255,255,255,0.35);
-    background: transparent;
-  }
-  .enc-circulo.feito {
-    background: var(--midnight);
-    border-color: var(--midnight);
-    color: var(--white);
-  }
-  .enc-circulo.atual {
-    border-color: var(--white);
-    color: var(--white);
-    background: transparent;
-    font-weight: 800;
-  }
-  .enc-label {
-    font-size: 9px;
-    letter-spacing: 0.5px;
-    color: rgba(255,255,255,0.35);
-    text-align: center;
-    text-transform: uppercase;
-    line-height: 1.3;
-  }
+  body { font-family: 'Montserrat', sans-serif; color: var(--black); background: #F4F6F8; font-size: 13px; line-height: 1.7; }
+  .progresso-bloco { background: var(--ocean); padding: 20px 48px; }
+  .progresso-topo { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .progresso-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--white); font-weight: 700; }
+  .progresso-info { font-size: 11px; color: rgba(255,255,255,0.75); font-weight: 500; }
+  .progresso-bar-bg { background: rgba(255,255,255,0.2); border-radius: 100px; height: 4px; margin-bottom: 16px; overflow: hidden; }
+  .progresso-bar-fill { background: var(--gold); height: 4px; border-radius: 100px; }
+  .enc-lista { display: flex; gap: 6px; }
+  .enc-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; }
+  .enc-circulo { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.35); background: transparent; transition: all 0.2s; }
+  .enc-circulo.feito { background: var(--midnight); border-color: var(--midnight); color: var(--white); }
+  .enc-circulo.atual { border-color: var(--white); color: var(--white); background: transparent; font-weight: 800; }
+  .enc-item:hover .enc-circulo.feito { background: var(--gold); border-color: var(--gold); }
+  .enc-label { font-size: 9px; letter-spacing: 0.5px; color: rgba(255,255,255,0.35); text-align: center; text-transform: uppercase; line-height: 1.3; }
   .enc-label.feito { color: rgba(255,255,255,0.7); }
   .enc-label.atual { color: var(--white); font-weight: 700; }
-
-  /* ── CABEÇALHO ─────────────────────────────────────── */
-  .header {
-    background: var(--white);
-    padding: 40px 48px 32px;
-    border-bottom: 1px solid var(--border);
-  }
-  .header-meta {
-    font-size: 10px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--ocean);
-    font-weight: 600;
-    margin-bottom: 14px;
-  }
-  .header h1 {
-    font-size: 26px;
-    font-weight: 800;
-    color: var(--midnight);
-    letter-spacing: -0.5px;
-    line-height: 1.2;
-    margin-bottom: 6px;
-  }
-  .header-sub {
-    font-size: 13px;
-    color: var(--gray);
-    font-weight: 500;
-  }
-  .header-data {
-    font-size: 11px;
-    color: var(--gray);
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border);
-    display: flex;
-    justify-content: space-between;
-  }
-
-  /* ── CONTEÚDO ──────────────────────────────────────── */
-  .conteudo { padding: 40px 48px; }
-
-  h2 {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    color: var(--ocean);
-    margin-top: 44px;
-    margin-bottom: 16px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--border);
-  }
-  h2:first-child { margin-top: 0; }
-
-  h3 {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--midnight);
-    margin-bottom: 6px;
-    margin-top: 20px;
-  }
-
-  p { margin-bottom: 10px; color: #333; }
-  ul { padding-left: 18px; margin-bottom: 10px; }
-  li { margin-bottom: 5px; color: #444; }
-  strong { font-weight: 700; color: var(--midnight); }
-  em { font-style: italic; color: #555; }
-  hr { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
-
-  /* ── TESE ──────────────────────────────────────────── */
-  .bloco-tese {
-    background: var(--midnight);
-    color: var(--white);
-    padding: 22px 28px;
-    border-radius: 6px;
-    margin: 20px 0 28px;
-    font-size: 15px;
-    font-weight: 600;
-    font-style: italic;
-    text-align: center;
-    line-height: 1.5;
-    letter-spacing: -0.2px;
-  }
-  .bloco-tese span {
-    display: block;
-    font-size: 10px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--ocean-light);
-    font-style: normal;
-    font-weight: 600;
-    margin-bottom: 8px;
-  }
-
-  /* ── BLOCOS ────────────────────────────────────────── */
-  .bloco {
-    background: var(--pearl);
-    border-left: 3px solid var(--midnight);
-    padding: 14px 18px;
-    margin: 12px 0;
-    border-radius: 0 4px 4px 0;
-    font-size: 12px;
-  }
-  .bloco-gold {
-    background: #FDF8ED;
-    border-left: 3px solid var(--gold);
-    padding: 14px 18px;
-    margin: 12px 0;
-    border-radius: 0 4px 4px 0;
-    font-size: 12px;
-  }
-  .bloco-ocean {
-    background: #EFF6FB;
-    border-left: 3px solid var(--ocean);
-    padding: 14px 18px;
-    margin: 12px 0;
-    border-radius: 0 4px 4px 0;
-    font-size: 12px;
-  }
-
-  /* ── DECISÕES GRID ─────────────────────────────────── */
-  .decisoes-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin: 14px 0;
-  }
-
-  .decisao-card {
-    border: 1px solid var(--border);
-    border-top: 3px solid var(--midnight);
-    border-radius: 0 0 6px 6px;
-    padding: 14px 16px;
-    background: var(--white);
-  }
-
-  .decisao-card .num {
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: var(--gray);
-    margin-bottom: 4px;
-  }
-
-  .decisao-card h3 {
-    font-size: 13px;
-    margin-top: 0;
-    margin-bottom: 6px;
-  }
-
-  .decisao-card p {
-    font-size: 11px;
-    color: var(--gray);
-    margin: 0;
-    line-height: 1.5;
-  }
-
-  /* ── FLUXO ─────────────────────────────────────────── */
-  .fluxo-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin: 14px 0;
-  }
-
-  .fluxo-card {
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    overflow: hidden;
-  }
-
-  .fluxo-header {
-    background: var(--midnight);
-    color: var(--white);
-    padding: 10px 16px;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-  }
-
-  .fluxo-body {
-    padding: 12px 16px;
-  }
-
-  .fluxo-body li { font-size: 12px; }
-
-  /* ── FASES RESUMO ──────────────────────────────────── */
-  .fases-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 10px;
-    margin: 14px 0;
-  }
-
-  .fase-mini {
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    overflow: hidden;
-  }
-
-  .fase-mini-header {
-    padding: 10px 14px;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--white);
-  }
-
-  .fase-mini-body {
-    padding: 10px 14px;
-    font-size: 11px;
-    color: #444;
-    line-height: 1.5;
-  }
-
-  .fase-mini-body strong {
-    display: block;
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--gray);
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    margin-bottom: 2px;
-  }
-
+  .header { background: var(--white); padding: 36px 48px 28px; border-bottom: 1px solid var(--border); }
+  .header-meta { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--ocean); font-weight: 600; margin-bottom: 12px; }
+  .header h1 { font-size: 24px; font-weight: 800; color: var(--midnight); letter-spacing: -0.5px; line-height: 1.2; margin-bottom: 4px; }
+  .header-sub { font-size: 12px; color: var(--gray); font-weight: 500; }
+  .header-data { font-size: 11px; color: var(--gray); margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; }
+  .bloco-tese { background: var(--midnight); color: var(--white); padding: 18px 24px; margin: 0 48px 24px; border-radius: 0 0 6px 6px; font-size: 14px; font-weight: 600; font-style: italic; text-align: center; line-height: 1.5; }
+  .bloco-tese span { display: block; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--ocean-light); font-style: normal; font-weight: 600; margin-bottom: 6px; }
+  .acordeon { max-width: 860px; margin: 0 auto; padding: 0 48px 48px; }
+  .ac-card { background: var(--white); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; overflow: hidden; transition: box-shadow 0.2s; }
+  .ac-card:hover { box-shadow: 0 2px 12px rgba(18,44,79,0.08); }
+  .ac-card.ativo { box-shadow: 0 4px 20px rgba(18,44,79,0.12); border-color: var(--ocean); }
+  .ac-card.afazer { opacity: 0.55; cursor: default; }
+  .ac-header { display: grid; grid-template-columns: 44px 1fr auto auto; align-items: center; gap: 14px; padding: 16px 20px; cursor: pointer; user-select: none; }
+  .ac-card.afazer .ac-header { cursor: default; }
+  .ac-num { width: 36px; height: 36px; border-radius: 50%; background: var(--midnight); color: var(--white); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; flex-shrink: 0; }
+  .ac-card.afazer .ac-num { background: var(--gray); }
+  .ac-titulo { font-size: 14px; font-weight: 700; color: var(--midnight); margin-bottom: 1px; }
+  .ac-data { font-size: 10px; color: var(--gray); font-weight: 500; }
+  .ac-badge { font-size: 9px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; padding: 4px 10px; border-radius: 100px; white-space: nowrap; }
+  .badge-concluido { background: #E8F5E9; color: var(--green); }
+  .badge-atual { background: #E3EEF7; color: var(--ocean); }
+  .badge-afazer { background: #F0F0F0; color: var(--gray); }
+  .ac-seta { font-size: 11px; color: var(--gray); transition: transform 0.2s; width: 16px; text-align: center; }
+  .ac-card.ativo .ac-seta { transform: rotate(180deg); color: var(--ocean); }
+  .ac-body { display: none; border-top: 1px solid var(--border); padding: 32px 28px; background: #FAFBFC; }
+  .ac-body h2 { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--ocean); margin-top: 36px; margin-bottom: 14px; padding-bottom: 7px; border-bottom: 1px solid var(--border); }
+  .ac-body h2:first-child { margin-top: 0; }
+  .ac-body h3 { font-size: 13px; font-weight: 700; color: var(--midnight); margin-bottom: 6px; margin-top: 18px; }
+  .ac-body p { margin-bottom: 9px; color: #333; font-size: 12px; }
+  .ac-body ul { padding-left: 18px; margin-bottom: 10px; }
+  .ac-body li { margin-bottom: 4px; color: #444; font-size: 12px; }
+  .ac-body strong { font-weight: 700; color: var(--midnight); }
+  .ac-body em { font-style: italic; color: #555; }
+  .ac-body hr { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+  .bloco { background: var(--pearl); border-left: 3px solid var(--midnight); padding: 12px 16px; margin: 10px 0; border-radius: 0 4px 4px 0; font-size: 12px; }
+  .bloco-gold { background: #FDF8ED; border-left: 3px solid var(--gold); padding: 12px 16px; margin: 10px 0; border-radius: 0 4px 4px 0; font-size: 12px; }
+  .bloco-ocean { background: #EFF6FB; border-left: 3px solid var(--ocean); padding: 12px 16px; margin: 10px 0; border-radius: 0 4px 4px 0; font-size: 12px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 12px 0; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 12px 0; }
+  .card-borda { border: 1px solid var(--border); border-top: 3px solid var(--midnight); border-radius: 0 0 6px 6px; padding: 12px 14px; background: var(--white); }
+  .card-borda .num { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gray); margin-bottom: 3px; }
+  .card-borda h3 { font-size: 12px; margin-top: 0; margin-bottom: 4px; }
+  .card-borda p { font-size: 11px; color: var(--gray); margin: 0; }
+  .pilar-card { background: var(--pearl); border: 1px solid var(--border); border-top: 3px solid var(--gold); padding: 12px 14px; border-radius: 0 0 4px 4px; }
+  .pilar-card .pnum { font-size: 22px; font-weight: 800; color: var(--border); line-height: 1; margin-bottom: 4px; }
+  .pilar-card h3 { font-size: 12px; margin-top: 0; margin-bottom: 2px; }
+  .pilar-card p { font-size: 10px; color: var(--gray); margin: 0; }
+  .caminho-card { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .caminho-header { background: var(--midnight); color: var(--white); padding: 10px 14px; font-size: 11px; font-weight: 700; }
+  .pc-bloco { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .pc-bloco:last-child { border-bottom: none; }
+  .pc-label { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px; display: block; }
+  .pc-label.pros { color: var(--green); }
+  .pc-label.contras { color: var(--red); }
+  .pc-bloco ul { margin-bottom: 0; }
+  .pc-bloco li { font-size: 11px; }
+  .falha-header { display: grid; grid-template-columns: 22px 1fr 1fr 120px; gap: 12px; padding: 7px 0; border-bottom: 2px solid var(--midnight); font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gray); }
+  .falha-item { display: grid; grid-template-columns: 22px 1fr 1fr 120px; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--border); align-items: start; font-size: 11px; }
+  .falha-item:last-child { border-bottom: none; }
+  .falha-num { color: var(--gray); font-weight: 700; padding-top: 2px; }
+  .falha-texto { color: #333; line-height: 1.5; }
+  .falha-solucao { color: #555; font-size: 10px; line-height: 1.5; font-style: italic; }
+  .status-badge { font-size: 8px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; padding: 3px 7px; border-radius: 100px; text-align: center; white-space: nowrap; display: inline-block; }
+  .status-nao-iniciado { background: #F0F0F0; color: #888; }
+  .status-aguardando { background: #FFF8E1; color: #E67E22; }
+  .status-concluido { background: #E8F5E9; color: var(--green); }
+  .baseline-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 12px 0; }
+  .baseline-card { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .baseline-header { padding: 8px 14px; font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--white); }
+  .baseline-d0 .baseline-header { background: var(--red); }
+  .baseline-d90 .baseline-header { background: var(--green); }
+  .baseline-body { padding: 12px 14px; }
+  .baseline-body li { font-size: 11px; margin-bottom: 6px; color: #444; }
+  .fase-mini { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .fase-mini-header { padding: 9px 12px; font-size: 11px; font-weight: 700; color: var(--white); }
+  .fase-mini-body { padding: 10px 12px; font-size: 11px; color: #444; line-height: 1.5; }
+  .fase-mini-body strong { display: block; font-size: 9px; font-weight: 700; color: var(--gray); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 2px; }
   .f1 .fase-mini-header { background: var(--ocean); }
   .f2 .fase-mini-header { background: var(--gold); }
   .f3 .fase-mini-header { background: var(--green); }
-
-  /* ── PRÓXIMOS PASSOS ───────────────────────────────── */
-  .pp-item {
-    display: flex;
-    gap: 14px;
-    padding: 11px 0;
-    border-bottom: 1px solid var(--border);
-    align-items: flex-start;
-  }
+  .fluxo-card { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .fluxo-header { background: var(--midnight); color: var(--white); padding: 9px 14px; font-size: 11px; font-weight: 700; }
+  .fluxo-body { padding: 10px 14px; }
+  .fluxo-body li { font-size: 11px; }
+  .campos-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 10px 0; }
+  .campo { background: var(--white); border: 1px solid var(--border); border-radius: 4px; padding: 7px 8px; text-align: center; }
+  .campo-num { display: block; font-size: 8px; font-weight: 700; letter-spacing: 1px; color: var(--gray); margin-bottom: 2px; }
+  .campo-nome { font-size: 10px; font-weight: 600; color: var(--midnight); }
+  .quiz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 10px 0; }
+  .quiz-item { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #333; padding: 3px 0; }
+  .quiz-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--ocean); flex-shrink: 0; }
+  .pp-item { display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--border); align-items: flex-start; }
   .pp-item:last-child { border-bottom: none; }
-  .pp-tag {
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    padding: 3px 8px;
-    border-radius: 100px;
-    white-space: nowrap;
-    margin-top: 1px;
-  }
+  .pp-tag { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 3px 8px; border-radius: 100px; white-space: nowrap; margin-top: 1px; }
   .pp-talita { background: var(--midnight); color: var(--white); }
-  .pp-bruna  { background: var(--ocean); color: var(--white); }
-  .pp-ambas  { background: var(--gold); color: var(--midnight); }
+  .pp-bruna { background: var(--ocean); color: var(--white); }
+  .pp-ambas { background: var(--gold); color: var(--midnight); }
   .pp-acao { font-size: 12px; color: #333; line-height: 1.5; }
-
-  /* ── MAPA ──────────────────────────────────────────── */
-  .mapa-link {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    background: var(--pearl);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 14px 18px;
-    text-decoration: none;
-    color: var(--midnight);
-    margin: 14px 0;
-    font-size: 12px;
-  }
-  .mapa-icone { font-size: 20px; }
-  .mapa-info strong { display: block; font-size: 13px; font-weight: 700; color: var(--midnight); margin-bottom: 2px; }
-  .mapa-info span { font-size: 11px; color: var(--gray); }
-
-  /* ── RODAPÉ ────────────────────────────────────────── */
-  .rodape {
-    background: var(--midnight);
-    color: rgba(255,255,255,0.4);
-    padding: 16px 48px;
-    font-size: 10px;
-    letter-spacing: 0.5px;
-    display: flex;
-    justify-content: space-between;
-    margin-top: 48px;
-  }
+  .mapa-link { display: flex; align-items: center; gap: 12px; background: var(--pearl); border: 1px solid var(--border); border-radius: 6px; padding: 12px 16px; text-decoration: none; color: var(--midnight); margin: 12px 0; font-size: 12px; }
+  .mapa-info strong { display: block; font-size: 12px; font-weight: 700; color: var(--midnight); margin-bottom: 2px; }
+  .mapa-info span { font-size: 10px; color: var(--gray); }
+  .rodape { background: var(--midnight); color: rgba(255,255,255,0.4); padding: 14px 48px; font-size: 10px; letter-spacing: 0.5px; display: flex; justify-content: space-between; }
   .rodape strong { color: rgba(255,255,255,0.7); }
 </style>
 </head>
 <body>
 
-<!-- BARRA DE PROGRESSO -->
 <div class="progresso-bloco">
   <div class="progresso-topo">
     <span class="progresso-label">Progresso da Consultoria</span>
     <span class="progresso-info" id="info-dias">—</span>
   </div>
-  <div class="progresso-bar-bg">
-    <div class="progresso-bar-fill" id="barra" style="width:0%"></div>
-  </div>
+  <div class="progresso-bar-bg"><div class="progresso-bar-fill" id="barra" style="width:0%"></div></div>
   <div class="enc-lista">
-    <div class="enc-item">
-      <div class="enc-circulo feito">1</div>
-      <span class="enc-label feito">Diagnóstico</span>
-    </div>
-    <div class="enc-item">
-      <div class="enc-circulo feito">2</div>
-      <span class="enc-label feito">Estruturação</span>
-    </div>
-    <div class="enc-item">
-      <div class="enc-circulo feito">3</div>
-      <span class="enc-label feito">Estratégia</span>
-    </div>
-    <div class="enc-item">
-      <div class="enc-circulo atual">4</div>
-      <span class="enc-label atual">Método</span>
-    </div>
-    <div class="enc-item">
-      <div class="enc-circulo">5</div>
-      <span class="enc-label">Validação</span>
-    </div>
-    <div class="enc-item">
-      <div class="enc-circulo">6</div>
-      <span class="enc-label">Experiência</span>
-    </div>
+    <div class="enc-item" onclick="abrirEncontro(1)"><div class="enc-circulo feito">1</div><span class="enc-label feito">Diagnóstico</span></div>
+    <div class="enc-item" onclick="abrirEncontro(2)"><div class="enc-circulo feito">2</div><span class="enc-label feito">Estruturação</span></div>
+    <div class="enc-item" onclick="abrirEncontro(3)"><div class="enc-circulo feito">3</div><span class="enc-label feito">Estratégia</span></div>
+    <div class="enc-item" onclick="abrirEncontro(4)"><div class="enc-circulo atual">4</div><span class="enc-label atual">Método</span></div>
+    <div class="enc-item"><div class="enc-circulo">5</div><span class="enc-label">Validação</span></div>
+    <div class="enc-item"><div class="enc-circulo">6</div><span class="enc-label">Experiência</span></div>
   </div>
 </div>
 
 <script>
-(function() {
-  var inicio = new Date(2026, 2, 27);
-  var fim    = new Date(2026, 5, 25);
-  var hoje   = new Date();
+(function(){
+  var inicio=new Date(2026,2,27),hoje=new Date();
   hoje.setHours(0,0,0,0);
-  var total    = 90;
-  var passados = Math.max(0, Math.round((hoje - inicio) / 86400000));
-  var restantes = Math.max(0, total - passados);
-  var pct = Math.min(100, Math.round((passados / total) * 100));
-  document.getElementById('barra').style.width = pct + '%';
-  var txtDias = passados === 1 ? '1 dia percorrido' : passados + ' dias percorridos';
-  var txtRest = restantes === 1 ? '1 dia restante' : restantes + ' dias restantes';
-  document.getElementById('info-dias').textContent = txtDias + ' · ' + txtRest + ' · ' + pct + '%';
+  var total=90,passados=Math.max(0,Math.round((hoje-inicio)/86400000)),restantes=Math.max(0,total-passados),pct=Math.min(100,Math.round((passados/total)*100));
+  document.getElementById('barra').style.width=pct+'%';
+  document.getElementById('info-dias').textContent=passados+' dias percorridos · '+restantes+' restantes · '+pct+'%';
 })();
+function toggleEncontro(n){
+  var b=document.getElementById('body-'+n),c=document.getElementById('card-'+n),s=document.getElementById('seta-'+n);
+  if(!b)return;
+  var open=b.style.display==='block';
+  b.style.display=open?'none':'block';
+  c.classList.toggle('ativo',!open);
+  s.textContent=open?'▼':'▲';
+}
+function abrirEncontro(n){
+  var b=document.getElementById('body-'+n),c=document.getElementById('card-'+n),s=document.getElementById('seta-'+n);
+  if(!b)return;
+  b.style.display='block';c.classList.add('ativo');s.textContent='▲';
+  c.scrollIntoView({behavior:'smooth',block:'start'});
+}
 </script>
 
-<!-- CABEÇALHO -->
 <div class="header">
-  <div class="header-meta">Consultoria de Metodologia · 4º Encontro · Pós-reunião</div>
-  <h1>O que foi decidido<br>e os próximos passos</h1>
-  <p class="header-sub">Cliente: <strong>Bruna Della Flora</strong></p>
+  <div class="header-meta">Consultoria de Metodologia · Histórico completo</div>
+  <h1>Bruna Della Flora</h1>
+  <p class="header-sub">Acompanhamento da jornada — 6 encontros · 90 dias</p>
   <div class="header-data">
-    <span>28 de abril de 2026</span>
-    <span>Elaborado por <strong>Talita Neris</strong></span>
+    <span>Início: 27 de março de 2026 · Término: 25 de junho de 2026</span>
+    <span>Consultora: <strong>Talita Neris</strong></span>
   </div>
 </div>
 
-<div class="conteudo">
+<div class="bloco-tese"><span>Tese central</span>"Quando a oferta é clara, a venda encurta."</div>
 
-<!-- TESE -->
-<div class="bloco-tese">
-  <span>Tese central</span>
-  "Quando a oferta é clara, a venda encurta."
-</div>
+<div class="acordeon">
 
-<!-- O QUE FOI FEITO -->
-<h2>O que foi feito hoje</h2>
-
-<p>No quarto encontro revisamos a lógica completa da metodologia e alinhamos a nova estrutura. A mudança mais importante: a metodologia <strong>deixa de ser baseada apenas em aulas</strong> e passa a funcionar como <strong>progressão do mentorado</strong> — cada fase tem um objetivo claro, um entregável definido e um produto correspondente.</p>
-
-<div class="bloco-gold">
-  <strong>Decisão central do encontro:</strong> O foco agora não é apenas o que Bruna ensina — é o que o mentorado <em>conquista</em> em cada etapa. A jornada tem começo, meio e resultado concreto em cada fase.
-</div>
-
-<hr>
-
-<!-- ESTRUTURA ATUALIZADA -->
-<h2>Estrutura da metodologia — atualizada</h2>
-
-<h3>Começo por Aqui · Plano de Fundação</h3>
-<p>Definimos os campos obrigatórios que o mentorado preenche antes de entrar em qualquer módulo.</p>
-
-<div class="bloco">
-  <strong>5 campos do Plano de Fundação:</strong>
-  <ul style="margin-top: 8px; margin-bottom: 0;">
-    <li>O que faz</li>
-    <li>Pra quem faz</li>
-    <li>Dor principal</li>
-    <li>Objetivo</li>
-    <li>Posicionamento</li>
-  </ul>
-</div>
-
-<h3>Quiz de Diagnóstico com IA</h3>
-<p>Antes de entrar na base, o mentorado responde um quiz que identifica seu estágio real e direciona o percurso dentro da metodologia.</p>
-
-<div class="bloco-ocean">
-  <strong>O quiz diagnostica:</strong>
-  <ul style="margin-top: 8px; margin-bottom: 0;">
-    <li>Clareza da oferta</li>
-    <li>Tangível ou intangível</li>
-    <li>Pontos cegos</li>
-    <li>Estágio do mentorado</li>
-  </ul>
-</div>
-
-<h3>As 3 Fases — revisadas</h3>
-
-<div class="fases-row">
-  <div class="fase-mini f1">
-    <div class="fase-mini-header">Fase 1 — Test Drive</div>
-    <div class="fase-mini-body">
-      <strong>Objetivos</strong>
-      Validar oferta · Primeiras vendas · Ajustar mensagem · Encontrar clareza
+<!-- 1º ENCONTRO -->
+<div class="ac-card" id="card-1">
+  <div class="ac-header" onclick="toggleEncontro(1)">
+    <div class="ac-num">1</div>
+    <div><div class="ac-titulo">Diagnóstico</div><div class="ac-data">27 de março de 2026</div></div>
+    <span class="ac-badge badge-concluido">Concluído</span>
+    <span class="ac-seta" id="seta-1">▼</span>
+  </div>
+  <div class="ac-body" id="body-1">
+    <h2>O que foi mapeado</h2>
+    <p>Diagnóstico do negócio atual — produtos, entregáveis, o que funciona e o que precisa ser construído. Dois caminhos possíveis para estruturar a metodologia foram apresentados.</p>
+    <p><strong>Situação na entrada:</strong></p>
+    <ul>
+      <li>Advanced Pro — 6 reuniões + 12 meses · R$26.000</li>
+      <li>Advanced Light — 1 reunião + 6 meses · R$10.000</li>
+      <li>Base gravada com conteúdo de oferta, funil, copy, vendas e tráfego</li>
+      <li>Comunidade ativa com 49 nichos diferentes</li>
+      <li>Hospitais ao vivo de vendas e copy</li>
+    </ul>
+    <div class="bloco-gold"><strong>Diagnóstico central:</strong> o produto entregue ao vivo é melhor do que o registrado na plataforma. O mentorado paga pelo Advanced e recebe uma experiência que depende da disponibilidade de Bruna, não de uma estrutura que funciona sem ela.</div>
+    <hr>
+    <h2>Pilares em discussão</h2>
+    <div class="grid3">
+      <div class="pilar-card"><div class="pnum">01</div><h3>Oferta</h3><p>O que você vende precisa ser entendido em 30 segundos</p></div>
+      <div class="pilar-card"><div class="pnum">02</div><h3>Comunicação</h3><p>A decidir no 2º encontro</p></div>
+      <div class="pilar-card"><div class="pnum">03</div><h3>Vendas</h3><p>Da conversa ao fechamento — sem sessão estratégica</p></div>
     </div>
-  </div>
-  <div class="fase-mini f2">
-    <div class="fase-mini-header">Fase 2 — Ritmo</div>
-    <div class="fase-mini-body">
-      <strong>Objetivos</strong>
-      Criar constância · Frequência de vendas · Repetir o que funciona · Estabilizar resultado
+    <hr>
+    <h2>Baseline D0 → D90</h2>
+    <div class="baseline-grid">
+      <div class="baseline-card baseline-d0">
+        <div class="baseline-header">D0 · 27/03/2026 · Início</div>
+        <div class="baseline-body"><ul>
+          <li>2 produtos: Advanced Pro (R$26k) e Light (R$10k)</li>
+          <li>Metodologia sem estrutura formal documentada</li>
+          <li>Base gravada desatualizada</li>
+          <li>Sem jornada definida por fase</li>
+          <li>Sem onboarding formal</li>
+          <li>10 falhas mapeadas</li>
+          <li>Nome do método: indefinido</li>
+        </ul></div>
+      </div>
+      <div class="baseline-card baseline-d90">
+        <div class="baseline-header">D90 · 25/06/2026 · A preencher</div>
+        <div class="baseline-body" style="padding:20px 14px;">
+          <p style="font-size:11px;color:var(--gray);font-style:italic;text-align:center;margin:0;line-height:1.6;">Este campo será preenchido<br>no encerramento da consultoria.<br><br><span style="font-size:10px;letter-spacing:1px;text-transform:uppercase;font-style:normal;color:var(--green);font-weight:700;">25/06/2026</span></p>
+        </div>
+      </div>
     </div>
-  </div>
-  <div class="fase-mini f3">
-    <div class="fase-mini-header">Fase 3 — Expansão · Pró</div>
-    <div class="fase-mini-body">
-      <strong>Objetivos</strong>
-      Crescimento · Novos produtos · Gestão simples · Decisões estratégicas
+    <hr>
+    <h2>Os dois caminhos</h2>
+    <div class="grid2">
+      <div class="caminho-card">
+        <div class="caminho-header">Caminho 1 — Metodologia com Fases</div>
+        <div class="pc-bloco"><span class="pc-label pros">Prós · Talita</span><ul><li>Bruna sabe onde cada mentorado está a qualquer momento</li><li>Gera renovação natural entre as fases</li><li>Resolve a comparação entre mentorados</li><li>Cada produto corresponde a uma fase</li><li>Cria argumento de venda para o nível mais alto</li></ul></div>
+        <div class="pc-bloco"><span class="pc-label contras">Contras · Talita</span><ul><li>Exige critério claro de avanço entre fases</li><li>Onboarding precisa ser mais estruturado</li></ul></div>
+        <div class="pc-bloco"><span class="pc-label pros">Análise · Bruna</span><p style="font-size:11px;color:var(--green);font-weight:700;margin-bottom:4px;">Contras: não vejo contras</p><p style="font-size:11px;color:#333;margin:0;">Vai tornar a jornada mais clara para mim e para os clientes! Além de fazer com que as pessoas renovem mais.</p></div>
+      </div>
+      <div class="caminho-card">
+        <div class="caminho-header">Caminho 2 — Trilha única + Ascensão</div>
+        <div class="pc-bloco"><span class="pc-label pros">Prós · Talita</span><ul><li>Mais simples de comunicar</li><li>Menos complexidade operacional</li><li>Onboarding mais direto</li></ul></div>
+        <div class="pc-bloco"><span class="pc-label contras">Contras · Talita</span><ul><li>Não resolve a comparação entre mentorados</li><li>Não cria gatilho de renovação claro</li><li>Não diferencia os produtos estruturalmente</li></ul></div>
+        <div class="pc-bloco"><span class="pc-label contras">Análise · Bruna</span><p style="font-size:11px;color:#333;margin:0;">Se abrir tudo numa única fase, não consigo controlar em que estágio a pessoa está. Tudo liberado antes da hora.</p></div>
+      </div>
     </div>
-  </div>
-</div>
-
-<hr>
-
-<!-- SISTEMA DE ACOMPANHAMENTO -->
-<h2>Novo sistema de acompanhamento individual</h2>
-
-<p>Definimos usar <strong>IA + transcrição</strong> para criar histórico individual de cada mentorado dentro da consultoria. O objetivo é parar de depender da memória e aumentar a clareza do acompanhamento.</p>
-
-<div class="fluxo-grid">
-  <div class="fluxo-card">
-    <div class="fluxo-header">Antes da reunião</div>
-    <div class="fluxo-body">
-      <ul>
-        <li>Revisar histórico do mentorado</li>
-        <li>Revisar direcionamentos anteriores</li>
-        <li>Entender em qual estágio está</li>
-      </ul>
+    <div class="bloco-gold"><strong>Decisão de Bruna:</strong> "O caminho 1 é melhor, porque ele envolve + acompanhamento e clareza do momento que está cada cliente!"</div>
+    <hr>
+    <h2>10 falhas mapeadas</h2>
+    <div style="margin-top:12px;">
+      <div class="falha-header"><span></span><span>Falha</span><span>Solução</span><span>Status</span></div>
+      <div class="falha-item"><span class="falha-num">01</span><span class="falha-texto">Base gravada desatualizada em relação ao que ensina ao vivo</span><span class="falha-solucao">—</span><span><span class="status-badge status-nao-iniciado">Não Iniciado</span></span></div>
+      <div class="falha-item"><span class="falha-num">02</span><span class="falha-texto">Diferença entre nichos de dor e desejo não está clara na base</span><span class="falha-solucao">—</span><span><span class="status-badge status-nao-iniciado">Não Iniciado</span></span></div>
+      <div class="falha-item"><span class="falha-num">03</span><span class="falha-texto">Mentorado não tem jornada clara — não sabe onde está nem o que fazer agora</span><span class="falha-solucao">3 Fases criadas</span><span><span class="status-badge status-aguardando">Aguardando</span></span></div>
+      <div class="falha-item"><span class="falha-num">04</span><span class="falha-texto">Você ensina ao vivo estratégias que não estão na base gravada</span><span class="falha-solucao">—</span><span><span class="status-badge status-nao-iniciado">Não Iniciado</span></span></div>
+      <div class="falha-item"><span class="falha-num">05</span><span class="falha-texto">Sem aulas gravadas de correção de vendas e pitch</span><span class="falha-solucao">—</span><span><span class="status-badge status-nao-iniciado">Não Iniciado</span></span></div>
+      <div class="falha-item"><span class="falha-num">06</span><span class="falha-texto">Falta módulo de gestão básica (finanças, pro labore)</span><span class="falha-solucao">Bônus: Módulo Gestão</span><span><span class="status-badge status-aguardando">Aguardando</span></span></div>
+      <div class="falha-item"><span class="falha-num">07</span><span class="falha-texto">Conteúdo muito técnico — falta conteúdo de mentalidade</span><span class="falha-solucao">—</span><span><span class="status-badge status-nao-iniciado">Não Iniciado</span></span></div>
+      <div class="falha-item"><span class="falha-num">08</span><span class="falha-texto">Mentorados se comparam entre si gerando frustração</span><span class="falha-solucao">—</span><span><span class="status-badge status-nao-iniciado">Não Iniciado</span></span></div>
+      <div class="falha-item"><span class="falha-num">09</span><span class="falha-texto">Sem onboarding definido antes da 1ª reunião</span><span class="falha-solucao">—</span><span><span class="status-badge status-nao-iniciado">Não Iniciado</span></span></div>
+      <div class="falha-item"><span class="falha-num">10</span><span class="falha-texto">Ancoragem de R$100k que não está convertendo</span><span class="falha-solucao">—</span><span><span class="status-badge status-nao-iniciado">Não Iniciado</span></span></div>
     </div>
-  </div>
-  <div class="fluxo-card">
-    <div class="fluxo-header">Depois da reunião</div>
-    <div class="fluxo-body">
-      <ul>
-        <li>Subir transcrição</li>
-        <li>Gerar plano de implementação</li>
-        <li>Criar checklist</li>
-        <li>Salvar evolução</li>
-      </ul>
+    <hr>
+    <h2>Mapa mental</h2>
+    <a class="mapa-link" href="https://www.mindmeister.com/app/map/3971392095" target="_blank"><div class="mapa-info"><strong>Workmap — Bruna Della Flora</strong><span>Abrir no MindMeister · atualizado a cada encontro</span></div></a>
+    <hr>
+    <h2>Próximos passos</h2>
+    <div>
+      <div class="pp-item"><span class="pp-tag pp-bruna">Bruna</span><span class="pp-acao">Enviar prós e contras dos dois caminhos até 31/03/2026 — <span style="color:var(--green);font-weight:700;">Enviado ✓</span></span></div>
+      <div class="pp-item"><span class="pp-tag pp-talita">Talita</span><span class="pp-acao">Trazer esqueleto do produto estruturado para o 2º encontro — <span style="color:var(--green);font-weight:700;">Entregue ✓</span></span></div>
     </div>
   </div>
 </div>
 
-<div class="bloco">
-  <strong>Como funciona na prática:</strong> cada mentorado terá um projeto individual na Claude para armazenar histórico, direcionamentos e evolução dentro da metodologia.
-</div>
-
-<hr>
-
-<!-- ALINHAMENTOS DO DIA -->
-<h2>Alinhamentos do encontro</h2>
-
-<div class="decisoes-grid">
-  <div class="decisao-card">
-    <div class="num">Ponto 01</div>
-    <h3>CRM</h3>
-    <p>Reunião com Luis Felipe hoje para estruturar o CRM.</p>
+<!-- 2º ENCONTRO -->
+<div class="ac-card" id="card-2">
+  <div class="ac-header" onclick="toggleEncontro(2)">
+    <div class="ac-num">2</div>
+    <div><div class="ac-titulo">Estruturação do Produto</div><div class="ac-data">Abril 2026</div></div>
+    <span class="ac-badge badge-concluido">Concluído</span>
+    <span class="ac-seta" id="seta-2">▼</span>
   </div>
-  <div class="decisao-card">
-    <div class="num">Ponto 02</div>
-    <h3>Qualificação do ICP</h3>
-    <p>Bruna vai analisar o documento de qualificação e estruturar o direcionamento de cada perfil para o produto correto.</p>
-  </div>
-  <div class="decisao-card">
-    <div class="num">Ponto 03</div>
-    <h3>Meta da Mariana</h3>
-    <p>Fechar 1 turma de workshop usando leads que ainda não compraram.</p>
-  </div>
-  <div class="decisao-card">
-    <div class="num">Ponto 04</div>
-    <h3>Laboratório de Conteúdo</h3>
-    <p>Bruna vai iniciar o laboratório de Reels como parte da estratégia de comunicação.</p>
-  </div>
-</div>
-
-<hr>
-
-<!-- MAPA MENTAL -->
-<h2>Mapa mental da consultoria</h2>
-
-<a class="mapa-link" href="https://www.mindmeister.com/app/map/3971392095" target="_blank">
-  <span class="mapa-icone">🗺</span>
-  <div class="mapa-info">
-    <strong>Workmap — Bruna Della Flora</strong>
-    <span>Abrir no MindMeister · atualizado a cada encontro</span>
-  </div>
-</a>
-
-<hr>
-
-<!-- PRÓXIMOS PASSOS -->
-<h2>Próximos passos</h2>
-
-<div style="margin-top: 8px;">
-  <div class="pp-item">
-    <span class="pp-tag pp-talita">Talita</span>
-    <span class="pp-acao">Finalizar a estrutura da Fase 1 e começar a esqueleton de aulas</span>
-  </div>
-  <div class="pp-item">
-    <span class="pp-tag pp-talita">Talita</span>
-    <span class="pp-acao">Estruturar o quiz de diagnóstico com IA</span>
-  </div>
-  <div class="pp-item">
-    <span class="pp-tag pp-bruna">Bruna</span>
-    <span class="pp-acao">Analisar o documento de qualificação do ICP enviado</span>
-  </div>
-  <div class="pp-item">
-    <span class="pp-tag pp-bruna">Bruna</span>
-    <span class="pp-acao">Iniciar o laboratório de Reels — primeiros testes de conteúdo</span>
-  </div>
-  <div class="pp-item">
-    <span class="pp-tag pp-ambas">Ambas</span>
-    <span class="pp-acao">Iniciar o uso da Claude para acompanhamento individual dos mentorados</span>
+  <div class="ac-body" id="body-2">
+    <h2>O que foi definido</h2>
+    <p>Validamos o esqueleto completo da metodologia — pilares, fases e esteira de produtos.</p>
+    <div class="bloco-gold"><strong>Decisão central:</strong> Metodologia com Fases confirmada. Cada fase tem produto correspondente e objetivo claro.</div>
+    <hr>
+    <h2>Pilares confirmados</h2>
+    <div class="grid3">
+      <div class="pilar-card"><div class="pnum">01</div><h3>Oferta</h3><p>O que você vende precisa ser entendido em 30 segundos</p></div>
+      <div class="pilar-card"><div class="pnum">02</div><h3>Comunicação</h3><p>Chama quem já quer comprar — não educa quem não decidiu</p></div>
+      <div class="pilar-card"><div class="pnum">03</div><h3>Vendas</h3><p>Você conduz a decisão. Não convence. Não aquece.</p></div>
+    </div>
+    <hr>
+    <h2>Esteira de produto validada</h2>
+    <div class="grid3">
+      <div class="card-borda"><div class="num">Fase 1</div><h3>Formação de Mentores</h3><p>Base + Comunidade + Hospitais · Sem encontro individual · R$5.000</p></div>
+      <div class="card-borda"><div class="num">Fase 2</div><h3>Advanced Light</h3><p>Base + 1 encontro de diagnóstico · R$10.000</p></div>
+      <div class="card-borda"><div class="num">Fase 3</div><h3>Advanced Pro</h3><p>Base + 6 encontros + 12 meses + acompanhamento · R$26.000</p></div>
+    </div>
+    <hr>
+    <h2>O Plano — pré-requisito obrigatório</h2>
+    <div class="bloco">Porta de entrada antes dos módulos. Sem O Plano completo, o mentorado não avança.<ul style="margin-top:8px;margin-bottom:0;"><li><strong>Objetivo</strong> — faturamento meta, número de clientes, ticket</li><li><strong>Público</strong> — ICP + tipo de nicho: dor ou desejo</li><li><strong>Produto</strong> — nome, formato, transformação, ticket, forma de venda</li></ul></div>
+    <hr>
+    <h2>Próximos passos</h2>
+    <div>
+      <div class="pp-item"><span class="pp-tag pp-talita">Talita</span><span class="pp-acao">Aprofundar estrutura das aulas de cada módulo para o 3º encontro</span></div>
+      <div class="pp-item"><span class="pp-tag pp-bruna">Bruna</span><span class="pp-acao">Refletir sobre o nome final do método</span></div>
+    </div>
   </div>
 </div>
 
-<div class="bloco-gold" style="margin-top: 24px;">
-  <strong>5º Encontro — Validação</strong><br>
-  Objetivo: validar a estrutura das aulas da Fase 1 e revisar o quiz de diagnóstico.
+<!-- 3º ENCONTRO -->
+<div class="ac-card" id="card-3">
+  <div class="ac-header" onclick="toggleEncontro(3)">
+    <div class="ac-num">3</div>
+    <div><div class="ac-titulo">Conversa Estratégica</div><div class="ac-data">Abril 2026</div></div>
+    <span class="ac-badge badge-concluido">Concluído</span>
+    <span class="ac-seta" id="seta-3">▼</span>
+  </div>
+  <div class="ac-body" id="body-3">
+    <h2>O que foi discutido</h2>
+    <p>Encontro de conversa estratégica — aprofundamento da visão de negócio, posicionamento e diferenciação. Sem pauta formal, com espaço para pensar o todo antes de entrar na execução.</p>
+    <div class="bloco">Formato: conversa aberta. Os pontos levantados aqui serviram de base para as decisões do 4º encontro sobre a revisão da metodologia.</div>
+  </div>
+</div>
+
+<!-- 4º ENCONTRO -->
+<div class="ac-card ativo" id="card-4">
+  <div class="ac-header" onclick="toggleEncontro(4)">
+    <div class="ac-num">4</div>
+    <div><div class="ac-titulo">Desenho do Método</div><div class="ac-data">28 de abril de 2026</div></div>
+    <span class="ac-badge badge-atual">Mais recente</span>
+    <span class="ac-seta" id="seta-4">▲</span>
+  </div>
+  <div class="ac-body" id="body-4" style="display:block;">
+    <h2>O que foi feito</h2>
+    <p>Revisamos a lógica completa da metodologia e alinhamos a nova estrutura. A metodologia <strong>deixa de ser baseada apenas em aulas</strong> e passa a funcionar como <strong>progressão do mentorado</strong> — cada fase tem objetivo claro, entregável definido e produto correspondente.</p>
+    <div class="bloco-gold"><strong>Decisão central:</strong> O foco não é apenas o que Bruna ensina — é o que o mentorado <em>conquista</em> em cada etapa.</div>
+    <hr>
+    <h2>Estrutura atualizada</h2>
+    <h3>Começo por Aqui · Plano de Fundação</h3>
+    <p>5 campos obrigatórios antes de entrar em qualquer módulo.</p>
+    <div class="campos-grid">
+      <div class="campo"><span class="campo-num">01</span><span class="campo-nome">O que faz</span></div>
+      <div class="campo"><span class="campo-num">02</span><span class="campo-nome">Pra quem faz</span></div>
+      <div class="campo"><span class="campo-num">03</span><span class="campo-nome">Dor principal</span></div>
+      <div class="campo"><span class="campo-num">04</span><span class="campo-nome">Objetivo</span></div>
+      <div class="campo"><span class="campo-num">05</span><span class="campo-nome">Posicionamento</span></div>
+    </div>
+    <h3>Quiz de Diagnóstico com IA</h3>
+    <div class="bloco-ocean"><strong>O quiz diagnostica:</strong><div class="quiz-grid" style="margin-top:8px;"><div class="quiz-item"><div class="quiz-dot"></div>Clareza da oferta</div><div class="quiz-item"><div class="quiz-dot"></div>Tangível ou intangível</div><div class="quiz-item"><div class="quiz-dot"></div>Pontos cegos</div><div class="quiz-item"><div class="quiz-dot"></div>Estágio do mentorado</div></div></div>
+    <h3>As 3 Fases — revisadas</h3>
+    <div class="grid3">
+      <div class="fase-mini f1"><div class="fase-mini-header">Fase 1 — Test Drive</div><div class="fase-mini-body"><strong>Objetivos</strong>Validar oferta · Primeiras vendas · Ajustar mensagem · Encontrar clareza</div></div>
+      <div class="fase-mini f2"><div class="fase-mini-header">Fase 2 — Ritmo</div><div class="fase-mini-body"><strong>Objetivos</strong>Criar constância · Frequência de vendas · Repetir o que funciona</div></div>
+      <div class="fase-mini f3"><div class="fase-mini-header">Fase 3 — Expansão · Pró</div><div class="fase-mini-body"><strong>Objetivos</strong>Crescimento · Novos produtos · Gestão simples · Decisões estratégicas</div></div>
+    </div>
+    <hr>
+    <h2>Sistema de acompanhamento individual</h2>
+    <p>IA + transcrição para criar histórico individual de cada mentorado. Objetivo: parar de depender da memória e aumentar a clareza do acompanhamento.</p>
+    <div class="grid2">
+      <div class="fluxo-card"><div class="fluxo-header">Antes da reunião</div><div class="fluxo-body"><ul><li>Revisar histórico do mentorado</li><li>Revisar direcionamentos anteriores</li><li>Entender em qual estágio está</li></ul></div></div>
+      <div class="fluxo-card"><div class="fluxo-header">Depois da reunião</div><div class="fluxo-body"><ul><li>Subir transcrição</li><li>Gerar plano de implementação</li><li>Criar checklist e salvar evolução</li></ul></div></div>
+    </div>
+    <hr>
+    <h2>Alinhamentos do encontro</h2>
+    <div class="grid2">
+      <div class="card-borda"><div class="num">Ponto 01</div><h3>CRM</h3><p>Reunião com Luis Felipe para estruturar o CRM.</p></div>
+      <div class="card-borda"><div class="num">Ponto 02</div><h3>Qualificação do ICP</h3><p>Bruna analisa o documento e estrutura o direcionamento por produto.</p></div>
+      <div class="card-borda"><div class="num">Ponto 03</div><h3>Meta da Mariana</h3><p>Fechar 1 turma de workshop com leads que ainda não compraram.</p></div>
+      <div class="card-borda"><div class="num">Ponto 04</div><h3>Laboratório de Conteúdo</h3><p>Bruna inicia o laboratório de Reels.</p></div>
+    </div>
+    <hr>
+    <h2>Próximos passos</h2>
+    <div>
+      <div class="pp-item"><span class="pp-tag pp-talita">Talita</span><span class="pp-acao">Finalizar estrutura da Fase 1 e esqueleto de aulas</span></div>
+      <div class="pp-item"><span class="pp-tag pp-talita">Talita</span><span class="pp-acao">Estruturar o quiz de diagnóstico com IA</span></div>
+      <div class="pp-item"><span class="pp-tag pp-bruna">Bruna</span><span class="pp-acao">Analisar o documento de qualificação do ICP</span></div>
+      <div class="pp-item"><span class="pp-tag pp-bruna">Bruna</span><span class="pp-acao">Iniciar laboratório de Reels</span></div>
+      <div class="pp-item"><span class="pp-tag pp-ambas">Ambas</span><span class="pp-acao">Iniciar uso da Claude para acompanhamento individual dos mentorados</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- 5º ENCONTRO -->
+<div class="ac-card afazer" id="card-5">
+  <div class="ac-header">
+    <div class="ac-num">5</div>
+    <div><div class="ac-titulo">Validação</div><div class="ac-data">A agendar</div></div>
+    <span class="ac-badge badge-afazer">A fazer</span>
+    <span class="ac-seta"></span>
+  </div>
+</div>
+
+<!-- 6º ENCONTRO -->
+<div class="ac-card afazer" id="card-6">
+  <div class="ac-header">
+    <div class="ac-num">6</div>
+    <div><div class="ac-titulo">Experiência do Cliente + Direcionamento</div><div class="ac-data">A agendar</div></div>
+    <span class="ac-badge badge-afazer">A fazer</span>
+    <span class="ac-seta"></span>
+  </div>
 </div>
 
 </div>
 
-<!-- RODAPÉ -->
 <div class="rodape">
   <span>Cliente: <strong>Bruna Della Flora</strong></span>
-  <span>Consultoria <strong>TNeris</strong> · Talita Neris · 28/04/2026</span>
+  <span>Consultoria <strong>TNeris</strong> · Talita Neris</span>
 </div>
 
 </body>
