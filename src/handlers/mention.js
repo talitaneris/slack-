@@ -109,10 +109,41 @@ FORMATAÇÃO OBRIGATÓRIA NO SLACK:
 - Responda curto. Mensagem comum: até 90 palavras. Estratégia/diagnóstico: até 140 palavras.
 - Não use cabeçalho grande, título em caixa alta, markdown de título (#/##), linha divisória ou tabela.
 - Use no máximo 3 bullets.
+- Emoji: no máximo 1 na mensagem inteira. Se não fizer falta, não use.
 - Se a resposta precisar ser longa, entregue só a decisão e diga que pode detalhar depois.
 - Formato preferido: leitura → verdade direta → ação.
 - Não pareça relatório. Pareça um diretor falando com Talita no Slack.
+- Para negrito no Slack, use apenas *uma estrela*. Nunca use **duas estrelas**.
 `;
+
+function getRuntimeContext() {
+  const now = new Date();
+  const brt = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    weekday: 'long',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(now);
+
+  return `
+CONTEXTO DE DATA/HORA:
+Agora em America/Sao_Paulo: ${brt}.
+Use esta data como referência absoluta. Ignore datas antigas em exemplos, memória, rotinas antigas ou templates.
+Se precisar mencionar data, confira por este contexto antes de responder.
+`;
+}
+
+function formatForSlack(text = '') {
+  return text
+    .replace(/^#{1,6}\s*/gm, '')
+    .replace(/\*\*([^*\n][^*\n]*?)\*\*/g, '*$1*')
+    .replace(/^\s*-{3,}\s*$/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
 
 function sanitizeMemoryForPrompt(agentKey, memory) {
   if (!memory) return '';
@@ -234,7 +265,7 @@ async function handleMention({ event, client, logger }) {
     }
 
     // Injeta regra de execução imediata em todos os agentes (Fix Bug 3 e 4)
-    systemPrompt = EXECUTION_RULE + OPERATIONAL_MEMORY_RULE + SLACK_FORMAT_RULE + systemPrompt;
+    systemPrompt = getRuntimeContext() + EXECUTION_RULE + OPERATIONAL_MEMORY_RULE + SLACK_FORMAT_RULE + systemPrompt;
 
     // Lê a memória acumulada do agente e acrescenta ao system prompt.
     // Memória é histórico de interação, não fonte factual. O contexto privado entra depois e vence conflito.
@@ -296,6 +327,8 @@ async function handleMention({ event, client, logger }) {
       if (calendarResponse) response = calendarResponse;
     }
 
+    response = formatForSlack(response);
+
     // Grava memória após a resposta — fire and forget (não bloqueia o bot)
     appendMemory(
       agent.key,
@@ -331,7 +364,7 @@ async function handleMention({ event, client, logger }) {
         text: `⭐ _Vega revisando..._`,
       });
 
-      const vegaReview = await callClaude(VEGA_REVIEW_SYSTEM, response);
+      const vegaReview = formatForSlack(await callClaude(VEGA_REVIEW_SYSTEM, response));
       const vegaApproved = vegaReview.includes('Vega aprovou');
 
       await client.chat.update({

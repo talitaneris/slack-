@@ -13,8 +13,21 @@
 const { callClaude }    = require('../claude');
 const { listarEventos, criarEvento, deletarEvento, buscarEvento } = require('../services/calendar');
 
+function getBrtNow() {
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    weekday: 'long',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date());
+}
+
 // System prompt especial que faz a Mariah retornar JSON estruturado para ações de agenda
-const MARIAH_CALENDAR_SYSTEM = `Você é Mariah, secretária pessoal da Talita. Analise a mensagem e retorne APENAS um JSON válido (sem markdown, sem texto extra).
+function getMariahCalendarSystem() {
+  return `Você é Mariah, secretária pessoal da Talita. Analise a mensagem e retorne APENAS um JSON válido (sem markdown, sem texto extra).
 
 AGENDA FIXA DA TALITA (nunca agendar por cima):
 - Treinos: seg/qua/sex 8h30–9h30
@@ -34,7 +47,7 @@ Formato da resposta:
   }
 }
 
-Data/hora de AGORA (BRT): ${new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 16)}
+Data/hora de AGORA em America/Sao_Paulo: ${getBrtNow()}
 
 REGRAS:
 - Se não há conflito com agenda fixa: execute e confirme
@@ -43,6 +56,7 @@ REGRAS:
 - Para "listar semana": inicio = hoje, fim = daqui 7 dias
 - Duração padrão de reunião: 1 hora (se não especificado)
 - Sempre use timezone America/Sao_Paulo nos cálculos`;
+}
 
 /**
  * Detecta se a mensagem é relacionada à agenda.
@@ -69,7 +83,7 @@ async function processMariahCalendar(userMessage, systemPrompt) {
 
   try {
     // Pede à Mariah para estruturar a ação em JSON
-    const raw = await callClaude(MARIAH_CALENDAR_SYSTEM, userMessage, 600);
+    const raw = await callClaude(getMariahCalendarSystem(), userMessage, 600);
 
     // Extrai o JSON da resposta (remove markdown se o modelo adicionou)
     const jsonStr = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();

@@ -30,6 +30,16 @@ const AGENT_DOCS = {
   ],
   mari: [
     '04-mentoria/jornada-d0-d180.md',
+    '04-mentoria/mentoradas/brenda.md',
+    '04-mentoria/mentoradas/carol-prestes.md',
+    '04-mentoria/mentoradas/damaris.md',
+    '04-mentoria/mentoradas/deborah.md',
+    '04-mentoria/mentoradas/eli-aparicio.md',
+    '04-mentoria/mentoradas/katy.md',
+    '04-mentoria/mentoradas/matheus-renato-wesley.md',
+    '04-mentoria/mentoradas/renata.md',
+    '04-mentoria/mentoradas/thaissa.md',
+    '04-mentoria/mentoradas/viviane.md',
   ],
   lia: [
     '07-produto/atribus-oferta.md',
