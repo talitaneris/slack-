@@ -113,6 +113,25 @@ FORMATAÇÃO OBRIGATÓRIA NO SLACK:
 - Não pareça relatório. Pareça um diretor falando com Talita no Slack.
 `;
 
+function sanitizeMemoryForPrompt(agentKey, memory) {
+  if (!memory) return '';
+
+  let sanitized = memory;
+
+  if (agentKey === 'jay') {
+    sanitized = sanitized
+      .replace(/30 de março de 2026/gi, '[data antiga removida]')
+      .replace(/14 mentoradas/gi, '[número antigo removido]')
+      .replace(/MRR estimado[^\\n]*/gi, '[MRR antigo removido]')
+      .replace(/~R\\$ 8\\.200/gi, '[valor antigo removido]')
+      .replace(/zero leads novos em março/gi, '[dado antigo removido]')
+      .replace(/D150/gi, '[marco antigo a confirmar]')
+      .replace(/capital oculto/gi, 'extração do que já existe');
+  }
+
+  return sanitized;
+}
+
 /**
  * Busca o histórico de um thread para contexto.
  * Retorna array de { role, content } excluindo a mensagem atual.
@@ -216,7 +235,20 @@ async function handleMention({ event, client, logger }) {
     // Injeta regra de execução imediata em todos os agentes (Fix Bug 3 e 4)
     systemPrompt = EXECUTION_RULE + OPERATIONAL_MEMORY_RULE + SLACK_FORMAT_RULE + systemPrompt;
 
+    // Lê a memória acumulada do agente e acrescenta ao system prompt.
+    // Memória é histórico de interação, não fonte factual. O contexto privado entra depois e vence conflito.
+    try {
+      const memoriaAgente = await readMemory(agent.key);
+      if (memoriaAgente && memoriaAgente.trim().length > 0) {
+        const memoriaSanitizada = sanitizeMemoryForPrompt(agent.key, memoriaAgente).slice(-4500);
+        systemPrompt = `${systemPrompt}\n\nMEMÓRIA DE INTERAÇÕES DO AGENTE:\nUse apenas para preferências, correções e continuidade. Não use como fonte factual se conflitar com o contexto privado.\n${memoriaSanitizada}`;
+      }
+    } catch {
+      // Falha de memória não interrompe o fluxo
+    }
+
     // Injeta contexto privado versionado por agente, quando configurado no Render.
+    // Este bloco entra depois da memória para vencer qualquer informação antiga acumulada.
     try {
       const privateContext = await getPrivateContextForAgent(agent.key);
       if (privateContext && privateContext.trim().length > 0) {
@@ -224,16 +256,6 @@ async function handleMention({ event, client, logger }) {
       }
     } catch (err) {
       logger.warn?.(`Contexto privado indisponível para ${agent.key}: ${err.message}`);
-    }
-
-    // Lê a memória acumulada do agente e acrescenta ao system prompt
-    try {
-      const memoriaAgente = await readMemory(agent.key);
-      if (memoriaAgente && memoriaAgente.trim().length > 0) {
-        systemPrompt = `${systemPrompt}\n\nMEMÓRIA ACUMULADA DO AGENTE:\n${memoriaAgente.slice(-6000)}`;
-      }
-    } catch {
-      // Falha de memória não interrompe o fluxo
     }
 
     // Monta histórico de contexto — thread ou canal (Fix Bug 1)
