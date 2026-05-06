@@ -103,6 +103,16 @@ Realidade operacional atual:
 - Vega, People e Alex devem evitar texto perfeito demais, linguagem com cara de IA e fórmulas prontas
 `;
 
+const SLACK_FORMAT_RULE = `
+FORMATAÇÃO OBRIGATÓRIA NO SLACK:
+- Responda curto. Mensagem comum: até 90 palavras. Estratégia/diagnóstico: até 140 palavras.
+- Não use cabeçalho grande, título em caixa alta, markdown de título (#/##), linha divisória ou tabela.
+- Use no máximo 3 bullets.
+- Se a resposta precisar ser longa, entregue só a decisão e diga que pode detalhar depois.
+- Formato preferido: leitura → verdade direta → ação.
+- Não pareça relatório. Pareça um diretor falando com Talita no Slack.
+`;
+
 /**
  * Busca o histórico de um thread para contexto.
  * Retorna array de { role, content } excluindo a mensagem atual.
@@ -204,7 +214,7 @@ async function handleMention({ event, client, logger }) {
     }
 
     // Injeta regra de execução imediata em todos os agentes (Fix Bug 3 e 4)
-    systemPrompt = EXECUTION_RULE + OPERATIONAL_MEMORY_RULE + systemPrompt;
+    systemPrompt = EXECUTION_RULE + OPERATIONAL_MEMORY_RULE + SLACK_FORMAT_RULE + systemPrompt;
 
     // Injeta contexto privado versionado por agente, quando configurado no Render.
     try {
