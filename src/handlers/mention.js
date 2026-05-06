@@ -4,6 +4,7 @@ const { fetchBrandKit } = require('../notion');
 const { readMemory, appendMemory, saveAprovacaoPendente } = require('../memory/index');
 const { getPendingFor } = require('../queue/index');
 const { processMariahCalendar } = require('./mariah');
+const { getPrivateContextForAgent } = require('../privateContext');
 
 const APROVACOES_CHANNEL = 'C061GRE0LUA';
 
@@ -204,6 +205,16 @@ async function handleMention({ event, client, logger }) {
 
     // Injeta regra de execução imediata em todos os agentes (Fix Bug 3 e 4)
     systemPrompt = EXECUTION_RULE + OPERATIONAL_MEMORY_RULE + systemPrompt;
+
+    // Injeta contexto privado versionado por agente, quando configurado no Render.
+    try {
+      const privateContext = await getPrivateContextForAgent(agent.key);
+      if (privateContext && privateContext.trim().length > 0) {
+        systemPrompt = `${systemPrompt}\n\n${privateContext}`;
+      }
+    } catch (err) {
+      logger.warn?.(`Contexto privado indisponível para ${agent.key}: ${err.message}`);
+    }
 
     // Lê a memória acumulada do agente e acrescenta ao system prompt
     try {
