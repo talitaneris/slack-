@@ -32,7 +32,7 @@ function getAuth() {
   const auth = new google.auth.OAuth2(
     GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET,
-    'urn:ietf:wg:oauth:2.0:oob'
+    process.env.GOOGLE_REDIRECT_URI || 'https://slack-soab.onrender.com/google/callback'
   );
   auth.setCredentials({ refresh_token: GOOGLE_REFRESH_TOKEN });
   return auth;
