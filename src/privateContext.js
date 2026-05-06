@@ -23,10 +23,6 @@ const AGENT_DOCS = {
     '06-financeiro/contratos-ativos.md',
     '01-editorial/linha-editorial.md',
   ],
-  lua: [
-    '05-squad/canais-agentes.md',
-    '06-financeiro/diagnostico-financeiro.md',
-  ],
   jay: [
     '06-financeiro/diagnostico-financeiro.md',
     '07-produto/atribus-oferta.md',
