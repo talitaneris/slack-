@@ -3,6 +3,7 @@ const { callClaude } = require('../claude');
 const { AGENTS } = require('../agents');
 const { refreshAll, getPautas } = require('../curadoria/crawler');
 const { getPendingFor, cleanup } = require('../queue/index');
+const { getPrivateContextForAgent } = require('../privateContext');
 
 // IDs dos canais do Slack
 const CHANNELS = {
@@ -18,53 +19,132 @@ const CHANNELS = {
   aprovacoes: process.env.SLACK_CHANNEL_APROVACOES || 'C03PX3KKTJS', // ← cole o ID do #aprovacoes aqui ou sete SLACK_CHANNEL_APROVACOES no Render
 };
 
+function getBrtDateContext() {
+  const now = new Date();
+  const brt = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    weekday: 'long',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(now);
+
+  return `Agora em America/Sao_Paulo: ${brt}. Use esta data. Não use data antiga, placeholder ou exemplo como fato.`;
+}
+
+const SCHEDULER_LAYOUT_RULE = `
+PADRÃO DE LAYOUT PARA ROTINAS NO SLACK:
+- Máximo 90 palavras em rotina comum.
+- Máximo 3 blocos curtos.
+- Não use emoji.
+- Não use #, ##, linha divisória, tabela ou caixa alta como título.
+- Use *negrito* com uma estrela quando precisar destacar. Nunca use **duas estrelas**.
+- Não use placeholder: [agora], [Nome], [data], [lead A], [preciso da data].
+- Não invente número, lead, pipeline, status, aula, pagamento ou métrica.
+- Se faltar dado, responda com decisão provisória e acione Nara ou agente dono. Não devolva coleta para Talita.
+- Formato preferido:
+Leitura: [1 frase]
+Ação: [1 ação concreta]
+Dono: [agente responsável]
+`;
+
+function formatForSlack(text = '') {
+  return text
+    .replace(/^#{1,6}\s*/gm, '')
+    .replace(/\*\*([^*\n][^*\n]*?)\*\*/g, '*$1*')
+    .replace(/^\s*-{3,}\s*$/gm, '')
+    .replace(/:[a-z0-9_+-]+:/gi, '')
+    .replace(/\p{Extended_Pictographic}/gu, '')
+    .replace(/\[[^\]\n]*(?:agora|data|nome|lead|preciso)[^\]\n]*\]/gi, '[dado a confirmar]')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+async function buildRoutineSystem(agent) {
+  let system = `${getBrtDateContext()}\n\n${SCHEDULER_LAYOUT_RULE}\n\n${agent.system}`;
+
+  try {
+    const privateContext = await getPrivateContextForAgent(agent.key);
+    if (privateContext && privateContext.trim()) {
+      system = `${system}\n\n${privateContext}`;
+    }
+  } catch {
+    // Rotina continua mesmo sem contexto privado
+  }
+
+  return system;
+}
+
 // Rotinas diárias — rodam todo dia às 8h BRT
 const DAILY_ROUTINES = [
   {
     agent: AGENTS.assistente,
     channel: CHANNELS.talita,
-    prompt: `Gere o resumo executivo do dia para Talita. Inclua: saudação, foco principal do dia, lembretes recorrentes do squad (dia 1 = Sofia confirma MRR; dia 5 = inadimplência; dia 20 = estratégia mensal Jay; Brenda e Carol com últimas parcelas em abril — renovação urgente), e: o que mais precisa da atenção de Talita hoje? Seja concisa, use emojis. Máximo 180 palavras.`,
+    prompt: `Gere o resumo da manhã para Talita. Use a data atual do sistema. Não peça a data. Não use lembretes antigos de Brenda/Carol se não estiverem no contexto atual.
+Formato:
+Leitura: 1 frase sobre o dia.
+Proteção: agenda/rotina que precisa ser protegida.
+Decisão: só o que depende de Talita hoje. Se não houver dado, acione Nara para levantar, sem pedir para Talita organizar.`,
     maxTokens: 400,
   },
   {
-    agent: AGENTS.lua,
+    agent: AGENTS.nara,
     channel: CHANNELS.squadgeral,
-    prompt: `Abra o dia do Squad TNeris. Inclua: foco principal do dia por área (Marketing / Vendas / CS / Produto / Gestão), algum alerta ou prioridade especial, e a pergunta do dia para o squad: o que cada agente precisa resolver hoje? Máximo 180 palavras.`,
+    prompt: `Abra o dia do squad como Nara. Não invente status por área.
+Formato:
+Leitura: estado da operação com base no que existe.
+Risco: maior risco se não houver dados atualizados.
+Ação: o que Nara vai cobrar hoje e de quem.`,
     maxTokens: 400,
   },
   {
     agent: AGENTS.people,
     channel: CHANNELS.marketing,
-    prompt: `Plano de conteúdo do dia — máximo 130 palavras, sem emoji por linha, no tom da Talita.
-Tema do dia (1 frase — dentro de um pilar: capital oculto / estrutura que liberta / renovação / preeminência).
-Stories 12h: gancho de abertura pronto para usar, direto, diagnóstico ou inversão. Nunca começa com "Hoje vou falar sobre".
-Feed: é dia de post ou não é — se for, qual formato e tema. Se não for, só diz.
-TikTok 18h: gancho de abertura pronto (1-2 frases).
-Alex: o que criar, formato, referência objetiva.`,
+    prompt: `Plano de conteúdo do dia. Não use capital oculto, "não é sobre", "isso é/isso não é", números inventados ou caso inventado.
+Formato:
+Direção: 1 frase.
+Stories: hook + desenvolvimento em até 3 frames.
+Alex: briefing visual em 1 linha.`,
     maxTokens: 350,
   },
   {
     agent: AGENTS.alex,
     channel: CHANNELS.marketing,
-    prompt: `Com base no briefing de People: o que você vai criar hoje (formato, tamanho, canal) e o que precisa para começar. Se não tiver demanda de feed, foca em template ou melhoria de peça existente. Máximo 80 palavras, direto.`,
+    prompt: `Com base no briefing mais recente de People/Vega no canal, diga o que Alex deve criar. Se faltar briefing, não peça 5 informações para Talita: acione People/Vega e entregue uma ação provisória simples.`,
     maxTokens: 200,
   },
   {
     agent: AGENTS.lia,
     channel: CHANNELS.vendas,
-    prompt: `Defina o foco de vendas do dia: etapa do funil para priorizar hoje, ação específica (prospectar / qualificar / follow-up / fechar), mensagem de abordagem para o perfil do dia, e meta do dia (ex: 3 contatos novos, 1 call, 1 proposta). Máximo 180 palavras.`,
+    prompt: `Defina o foco de vendas do dia sem inventar ICP, meta ou lead. A realidade atual é operação pequena. Se não houver pipeline atualizado, acione Marta/Nara.
+Formato:
+Prioridade: 1 ação comercial de hoje.
+Abordagem: 1 mensagem curta, sem "faz sentido?".
+Dono: Lia/Marta/Nara.`,
     maxTokens: 350,
   },
   {
     agent: AGENTS.marta,
     channel: CHANNELS.vendas,
-    prompt: `Gere o snapshot do pipeline do dia: onde estão os leads por etapa (prospecção / qualificação / proposta / fechamento), top 3 leads que merecem atenção hoje com motivo, e algum alerta de lead esquecido há mais de 5 dias. Máximo 180 palavras.`,
+    prompt: `Gere snapshot do pipeline somente com dados reais. Se não houver base conectada, diga que pipeline não está confiável ainda e acione Nara para organizar WhatsApp comercial + planilha.
+Nunca use [Nome Lead A] nem números inventados.
+Formato:
+Fato: [confirmado ou lacuna]
+Risco: [impacto comercial]
+Ação: [quem atualiza e onde]`,
     maxTokens: 350,
   },
   {
     agent: AGENTS.paulo,
     channel: CHANNELS.produto,
-    prompt: `Prepare o suporte instrucional para a aula da mentoria A Tribus de hoje. Inclua: objetivo de aprendizagem do dia, exercício ou dinâmica recomendada (com instrução clara), pergunta poderosa para fazer às mentoradas, e como encerrar a sessão gerando comprometimento. Máximo 200 palavras.`,
+    prompt: `Prepare apoio de produto para A Tribus. Aula fixa é segunda às 19h; só diga "aula hoje" se hoje for segunda-feira.
+Se faltar tema/fase, não devolva tudo para Talita. Entregue uma estrutura provisória e acione Mari/Nara para levantar travas das mentoradas.
+Formato:
+Leitura: [se há aula hoje ou preparação]
+Entrega provisória: [objetivo + exercício curto]
+Dono: [Paulo, Mari ou Nara]`,
     maxTokens: 400,
   },
 ];
@@ -87,7 +167,7 @@ Se Eli+Aparicio ainda não fecharam renovação: incluir como pendência.`,
       channel: CHANNELS.marketing,
       prompt: `Direção de comunicação da semana — máximo 100 palavras, sem emoji por linha.
 1 mensagem-chave (1 frase concreta — não vaga, não motivacional)
-1 pilar (capital oculto / estrutura que liberta / renovação / preeminência)
+1 pilar (extração do que já existe / estrutura que liberta / renovação / preeminência)
 1 ângulo (diagnóstico direto / inversão / bastidores / prova com profundidade / a vara de Moisés)
 Instrução para People: o que executar e onde
 Instrução para Alex: formato visual, referência objetiva`,
@@ -102,7 +182,8 @@ Instrução para Alex: formato visual, referência objetiva`,
     {
       agent: AGENTS.lens,
       channel: CHANNELS.gestao,
-      prompt: `Analise as métricas de abertura de semana nas 3 camadas (o que / por quê / o que fazer): Instagram (engajamento, alcance, seguidores), TikTok (views, retenção), Funil comercial (leads, conversão). Compare com a semana anterior e indique o maior gargalo atual. Máximo 200 palavras.`,
+      prompt: `Analise métricas de abertura de semana apenas se houver dados reais. Se não houver acesso, não peça print para Talita: acione Nara para organizar Instagram/Meta/funil.
+Formato: Fato / Lacuna / Ação com dono. Máximo 90 palavras.`,
       maxTokens: 450,
     },
   ],
@@ -118,7 +199,8 @@ Instrução para Alex: formato visual, referência objetiva`,
     {
       agent: AGENTS.lens,
       channel: CHANNELS.gestao,
-      prompt: `Execute o mid-week check de métricas nas 3 camadas (o que / por quê / o que fazer): Instagram, TikTok e funil comercial. Foque no desvio mais crítico em relação à meta da semana e indique ação corretiva com responsável. Máximo 200 palavras.`,
+      prompt: `Execute o mid-week check sem inventar métrica. Se não houver acesso a Instagram/TikTok/funil, registre lacuna e acione Nara.
+Formato: Fato / Lacuna / Ação com dono. Máximo 90 palavras.`,
       maxTokens: 450,
     },
   ],
@@ -126,7 +208,7 @@ Instrução para Alex: formato visual, referência objetiva`,
     {
       agent: AGENTS.jay,
       channel: CHANNELS.gestao,
-      prompt: `Gere o dashboard semanal de receita: receita da semana vs meta, pipeline por etapa, fechamentos, conversão, e os 3 alertas para a semana seguinte. Formato: tabela + síntese em bullets. Máximo 230 palavras.`,
+      prompt: `Gere dashboard semanal de receita somente com dados confirmados. Sem tabela. Se faltar pipeline/receita, acione Nara/Sofia/Marta e entregue decisão provisória. Máximo 100 palavras.`,
       maxTokens: 500,
     },
     {
@@ -143,15 +225,15 @@ Se algum contrato de renovação continuar pendente (Eli+Aparicio, Thaissa): cob
     {
       agent: AGENTS.lens,
       channel: CHANNELS.gestao,
-      prompt: `Fecha a semana com análise de métricas nas 3 camadas. Compare o resultado com a meta e indique: o que vai bem, o que está em risco, e a prioridade de ação para a semana seguinte com responsável. Máximo 200 palavras.`,
+      prompt: `Feche a semana com métricas apenas se houver dados reais. Se faltar acesso, acione Nara e diga a lacuna. Formato: Fato / Risco / Ação. Máximo 90 palavras.`,
       maxTokens: 400,
     },
   ],
   6: [ // Sábado
     {
-      agent: AGENTS.lua,
+      agent: AGENTS.nara,
       channel: CHANNELS.squadgeral,
-      prompt: `Execute o debrief semanal. Formato: 🟢 O que funcionou bem / 🟡 O que melhorar / 💡 Aprendizado da semana / 📌 Foco da próxima semana. Máximo 220 palavras.`,
+      prompt: `Execute o debrief semanal sem emoji e sem relatório longo. Formato: Funcionou / Travou / Próxima ação. Máximo 100 palavras.`,
       maxTokens: 500,
     },
   ],
@@ -160,9 +242,9 @@ Se algum contrato de renovação continuar pendente (Eli+Aparicio, Thaissa): cob
 // Arco narrativo semanal — SOAP Opera Sequence (Brunson)
 const STORIES_WEEK = {
   0: { tema: 'Pausa ou reflexão', pilar: 'Qualquer', angulo: 'Bastidores', skip: true },
-  1: { tema: 'Backstory — o problema real, sem resolver', pilar: 'Capital Oculto', angulo: 'diagnóstico direto', gancho: 'amanhã conto o que muda quando você para de adicionar' },
+  1: { tema: 'Backstory — o problema concreto, sem resolver', pilar: 'Extração do que já existe', angulo: 'diagnóstico direto', gancho: 'amanhã conto o que muda quando você para de adicionar' },
   2: { tema: 'A parede — o momento em que parou de funcionar', pilar: 'Estrutura que liberta', angulo: 'bastidores reais', gancho: 'a resposta que mudou tudo — amanhã' },
-  3: { tema: 'A epifania — o que muda quando você vê diferente', pilar: 'Capital Oculto', angulo: 'a vara de Moisés', gancho: 'me responde qual é a sua alavanca mais fraca' },
+  3: { tema: 'A epifania — o que muda quando você vê diferente', pilar: 'Extração do que já existe', angulo: 'a vara de Moisés', gancho: 'me responde qual é a sua alavanca mais fraca' },
   4: { tema: 'Prova real — quem já viveu isso com profundidade', pilar: 'Preeminência', angulo: 'prova com profundidade', gancho: 'quer entender o que foi feito? me responde aqui' },
   5: { tema: 'Oferta natural — o próximo passo para quem se reconheceu', pilar: 'A Tribus', angulo: 'oferta depois da jornada', gancho: 'me manda DM com "diagnóstico" e te conto mais' },
   6: { tema: 'Bastidores — processo com decisões reais, sem resultado pronto', pilar: 'Qualquer', angulo: 'document, don\'t create', gancho: '' },
@@ -207,7 +289,7 @@ No final, chame People pelo nome: "@People — sua vez."
 
   let vegaText;
   try {
-    vegaText = await callClaude(AGENTS.vega.system, vegaPrompt, 300);
+    vegaText = formatForSlack(await callClaude(await buildRoutineSystem(AGENTS.vega), vegaPrompt, 300));
   } catch (err) {
     logger.error('❌ Erro ao chamar Vega para Stories:', err.message);
     return;
@@ -218,7 +300,7 @@ No final, chame People pelo nome: "@People — sua vez."
   try {
     vegaPost = await slackClient.chat.postMessage({
       channel: CHANNELS.marketing,
-      text: `${AGENTS.vega.icon} *Vega — direção de Stories (${hoje})*\n\n${vegaText}`,
+      text: `*Vega* — direção de Stories (${hoje})\n${vegaText}`,
     });
     logger.info('✅ Vega postou direção em #marketing');
   } catch (err) {
@@ -267,7 +349,7 @@ Nenhuma palavra proibida. Nenhuma frase de transição de IA.
 
   let peopleText;
   try {
-    peopleText = await callClaude(AGENTS.people.system, peoplePrompt, 600);
+    peopleText = formatForSlack(await callClaude(await buildRoutineSystem(AGENTS.people), peoplePrompt, 600));
   } catch (err) {
     logger.error('❌ Erro ao chamar People para Stories:', err.message);
     return;
@@ -278,7 +360,7 @@ Nenhuma palavra proibida. Nenhuma frase de transição de IA.
     await slackClient.chat.postMessage({
       channel: CHANNELS.marketing,
       thread_ts: vegaPost.ts,
-      text: `${AGENTS.people.icon} *People — sequência pronta*\n\n${peopleText}`,
+      text: `*People* — sequência pronta\n${peopleText}`,
     });
     logger.info('✅ People respondeu na thread de #marketing');
   } catch (err) {
@@ -324,7 +406,7 @@ Máximo 80 palavras. Fale como Vega.
 
     let vegaReviewText;
     try {
-      vegaReviewText = await callClaude(AGENTS.vega.system, vegaReviewPrompt, 250);
+      vegaReviewText = formatForSlack(await callClaude(await buildRoutineSystem(AGENTS.vega), vegaReviewPrompt, 250));
     } catch (err) {
       logger.error(`❌ Erro na revisão de Vega (tentativa ${tentativa}):`, err.message);
       break;
@@ -333,7 +415,7 @@ Máximo 80 palavras. Fale como Vega.
     await slackClient.chat.postMessage({
       channel: CHANNELS.marketing,
       thread_ts: vegaPost.ts,
-      text: `${AGENTS.vega.icon} *Vega — revisão${tentativa > 1 ? ` (tentativa ${tentativa})` : ''}*\n\n${vegaReviewText}`,
+      text: `*Vega* — revisão${tentativa > 1 ? ` (tentativa ${tentativa})` : ''}\n${vegaReviewText}`,
     }).catch(err => logger.error('Erro ao postar revisão Vega:', err.message));
 
     aprovado = vegaReviewText.toLowerCase().includes('aprovado');
@@ -368,7 +450,7 @@ Aplique o teste do hook antes de entregar. Nenhuma palavra proibida.
 
       let peopleRefazText;
       try {
-        peopleRefazText = await callClaude(AGENTS.people.system, peopleRefazPrompt, 600);
+        peopleRefazText = formatForSlack(await callClaude(await buildRoutineSystem(AGENTS.people), peopleRefazPrompt, 600));
       } catch (err) {
         logger.error(`❌ Erro ao People refazer (tentativa ${tentativa}):`, err.message);
         break;
@@ -379,7 +461,7 @@ Aplique o teste do hook antes de entregar. Nenhuma palavra proibida.
       await slackClient.chat.postMessage({
         channel: CHANNELS.marketing,
         thread_ts: vegaPost.ts,
-        text: `${AGENTS.people.icon} *People — sequência refeita (tentativa ${tentativa + 1})*\n\n${peopleRefazText}`,
+        text: `*People* — sequência refeita (tentativa ${tentativa + 1})\n${peopleRefazText}`,
       }).catch(err => logger.error('Erro ao postar People refazer:', err.message));
     }
   }
@@ -388,14 +470,14 @@ Aplique o teste do hook antes de entregar. Nenhuma palavra proibida.
   if (aprovado) {
     await slackClient.chat.postMessage({
       channel: CHANNELS.aprovacoes,
-      text: `${AGENTS.people.icon} *Stories de hoje (${hoje}) — aprovado por Vega*\n\n${sequenciaFinal}\n\n---\n_Discussão completa em #marketing. ✅ para aprovar ou responda aqui para ajustar._`,
+      text: `*Stories de hoje (${hoje}) — aprovado por Vega*\n${formatForSlack(sequenciaFinal)}\n\nDiscussão completa em #marketing. Responda APROVADO ou REVISAR com o ajuste.`,
     }).catch(err => logger.error('Erro ao postar em #aprovacoes:', err.message));
     logger.info(`✅ Stories aprovados por Vega (${tentativa} tentativa(s)) — postado em #aprovacoes`);
   } else {
     // Esgotou as tentativas sem aprovação — avisa Talita
     await slackClient.chat.postMessage({
       channel: CHANNELS.aprovacoes,
-      text: `⚠️ *Stories de hoje (${hoje}) — não aprovados por Vega após ${MAX_TENTATIVAS} tentativas.*\nRevise a thread em #marketing e decida como prosseguir.`,
+      text: `*Stories de hoje (${hoje}) — não aprovados por Vega após ${MAX_TENTATIVAS} tentativas.*\nRevise a thread em #marketing e decida como prosseguir.`,
     }).catch(err => logger.error('Erro ao postar aviso em #aprovacoes:', err.message));
     logger.warn(`⚠️ Stories não aprovados após ${MAX_TENTATIVAS} tentativas`);
   }
@@ -407,10 +489,16 @@ Aplique o teste do hook antes de entregar. Nenhuma palavra proibida.
 async function runRoutine(routine, slackClient, logger) {
   const { agent, channel, prompt, maxTokens } = routine;
   try {
-    const text = await callClaude(agent.system, prompt, maxTokens);
+    if (!agent) {
+      logger.warn('⚠️ Rotina ignorada: agente inexistente.');
+      return;
+    }
+
+    const system = await buildRoutineSystem(agent);
+    const text = formatForSlack(await callClaude(system, prompt, maxTokens));
     await slackClient.chat.postMessage({
       channel,
-      text: `${agent.icon} *${agent.title}*\n\n${text}`,
+      text: `*${agent.title}* — ${agent.role}\n${text}`,
     });
     logger.info(`✅ Rotina executada: ${agent.title} → ${channel}`);
   } catch (err) {
@@ -456,7 +544,7 @@ function initScheduler(slackClient, logger) {
 
       await slackClient.chat.postMessage({
         channel: CHANNELS.marketing,
-        text: `✍️ *People — Pautas quentes de hoje (${new Date().toLocaleDateString('pt-BR')})*\n\nEssas são as 3 mais relevantes para o ICP. Use como base para Stories, Reel ou carrossel.\n\n${linhas}\n\n_Ver todas em: https://slack-soab.onrender.com/curadoria_`,
+        text: formatForSlack(`*People* — Pautas quentes de hoje (${new Date().toLocaleDateString('pt-BR')})\n\nUse como repertório, não como texto pronto.\n\n${linhas}\n\nVer todas: https://slack-soab.onrender.com/curadoria`),
       });
       logger.info('✅ Pautas enviadas para #marketing');
     } catch (err) {
@@ -503,9 +591,9 @@ Feche com:
     }, slackClient, logger);
   }, { timezone: 'America/Sao_Paulo' });
 
-  // ── 6h30 BRT diário — Lua lê a fila e gera briefing consolidado ──
+  // ── 6h30 BRT diário — Nara lê a fila e gera briefing consolidado ──
   cron.schedule('30 6 * * *', async () => {
-    logger.info('🌙 Cron 6h30 — Lua gerando briefing de fila');
+    logger.info('🧭 Cron 6h30 — Nara gerando briefing de fila');
     try {
       // Monta resumo das tarefas pendentes por agente
       const agentes = Object.values(AGENTS).map(a => a.key);
@@ -527,14 +615,14 @@ Feche com:
         : 'Nenhuma tarefa pendente na fila.';
 
       await runRoutine({
-        agent:     AGENTS.lua,
+        agent:     AGENTS.nara,
         channel:   CHANNELS.talita,
         maxTokens: 350,
-        prompt:    `Lua, briefing de 6h30. Tarefas pendentes na fila:\n${queueSummary}\n\nGere um resumo do que o squad precisa resolver hoje. Máximo 150 palavras.`,
+        prompt:    `Nara, briefing de 6h30. Tarefas pendentes na fila:\n${queueSummary}\n\nGere um resumo curto do que o squad precisa resolver hoje. Sem emoji. Formato: Leitura / Risco / Ação. Máximo 90 palavras.`,
       }, slackClient, logger);
 
     } catch (err) {
-      logger.error('Erro no cron 6h30 Lua:', err.message);
+      logger.error('Erro no cron 6h30 Nara:', err.message);
     }
   }, { timezone: 'America/Sao_Paulo' });
 
