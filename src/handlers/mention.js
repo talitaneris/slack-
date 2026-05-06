@@ -11,6 +11,7 @@ const APROVACOES_CHANNEL = 'C061GRE0LUA';
 const HELP_TEXT = [
   '*Squad TNeris — Agentes disponíveis:*',
   '',
+  '🧭 *Nara* — Orquestra dados, acessos, bases e fluxo entre agentes',
   '🌙 *Lua* — Operações, prioridades, status do squad',
   '📊 *Jay* — Receita, pipeline, estratégia comercial',
   '💰 *Sofia* — MRR, pagamentos, inadimplência',

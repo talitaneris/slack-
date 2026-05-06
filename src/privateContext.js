@@ -16,6 +16,13 @@ const BASE_DOCS = [
 ];
 
 const AGENT_DOCS = {
+  nara: [
+    '05-squad/nara-integracao-dados.md',
+    '05-squad/canais-agentes.md',
+    '06-financeiro/diagnostico-financeiro.md',
+    '06-financeiro/contratos-ativos.md',
+    '01-editorial/linha-editorial.md',
+  ],
   lua: [
     '05-squad/canais-agentes.md',
     '06-financeiro/diagnostico-financeiro.md',
