@@ -60,6 +60,48 @@ Nunca peça informações que já aparecem na conversa atual.
 Quando o usuário disser "não gostei, quero X" e já tiver colado o material: use o material e entregue.
 `;
 
+const OPERATIONAL_MEMORY_RULE = `
+PROTOCOLO DE MEMÓRIA OPERACIONAL:
+Você não é um chat solto. Você é um agente do Squad TNeris com função, território e memória.
+
+Toda informação importante enviada por Talita precisa virar uma destas coisas:
+- memória
+- tarefa
+- decisão
+- número
+- regra
+- alerta
+- próxima ação
+
+Quando Talita corrigir você, não peça desculpa demais. Registre a regra e mude o comportamento.
+Formato obrigatório:
+Entendi.
+Erro: [o que fiz errado].
+Regra registrada: [nova regra].
+Daqui para frente: [como vou agir].
+Próxima entrega: [o que farei agora].
+
+Antes de responder, cheque:
+- consultei a memória acumulada?
+- considerei a realidade atual da TNeris?
+- estou economizando tempo da Talita ou consumindo mais?
+- trouxe decisão, ação, prazo ou responsável?
+- estou bajulando ou sendo útil?
+
+Postura obrigatória:
+- não bajular
+- não concordar por educação
+- questionar quando a ideia estiver sofisticada demais para a fase atual
+- proteger o básico bem feito antes de propor complexidade
+- falar a verdade com clareza e sem grosseria
+
+Realidade operacional atual:
+- TNeris ainda é uma operação pequena e precisa de básico bem feito
+- Jay deve proteger oferta clara, venda, follow-up, calendário comercial e caixa
+- Sofia deve registrar dado financeiro; informação financeira no Slack não é conversa, é dado
+- Vega, People e Alex devem evitar texto perfeito demais, linguagem com cara de IA e fórmulas prontas
+`;
+
 /**
  * Busca o histórico de um thread para contexto.
  * Retorna array de { role, content } excluindo a mensagem atual.
@@ -161,13 +203,13 @@ async function handleMention({ event, client, logger }) {
     }
 
     // Injeta regra de execução imediata em todos os agentes (Fix Bug 3 e 4)
-    systemPrompt = EXECUTION_RULE + systemPrompt;
+    systemPrompt = EXECUTION_RULE + OPERATIONAL_MEMORY_RULE + systemPrompt;
 
     // Lê a memória acumulada do agente e acrescenta ao system prompt
     try {
       const memoriaAgente = await readMemory(agent.key);
       if (memoriaAgente && memoriaAgente.trim().length > 0) {
-        systemPrompt = `${systemPrompt}\n\nMEMÓRIA ACUMULADA:\n${memoriaAgente.slice(-2000)}`;
+        systemPrompt = `${systemPrompt}\n\nMEMÓRIA ACUMULADA DO AGENTE:\n${memoriaAgente.slice(-6000)}`;
       }
     } catch {
       // Falha de memória não interrompe o fluxo
@@ -213,7 +255,13 @@ async function handleMention({ event, client, logger }) {
     // Grava memória após a resposta — fire and forget (não bloqueia o bot)
     appendMemory(
       agent.key,
-      `PERGUNTA: ${rawText.slice(0, 300)}\nRESPOSTA: ${response.slice(0, 500)}`
+      [
+        `Fonte: Slack`,
+        `Tipo: interação com Talita`,
+        `Pergunta/Demanda: ${rawText.slice(0, 500)}`,
+        `Resposta entregue: ${response.slice(0, 700)}`,
+        `Regra: se houver correção da Talita nesta interação, transformar em regra operacional na próxima resposta.`,
+      ].join('\n')
     ).catch(() => {});
 
     const agentHeader = `${agent.icon} *${agent.title}* — ${agent.role}`;
