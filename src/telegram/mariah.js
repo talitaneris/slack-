@@ -118,7 +118,25 @@ async function buildMariahSystem() {
   return system;
 }
 
-function extractTelegramMessage(update) {
+async function readJsonBody(req) {
+  if (req.body && typeof req.body === 'object') return req.body;
+
+  const chunks = [];
+  for await (const chunk of req) {
+    chunks.push(Buffer.from(chunk));
+  }
+
+  const raw = Buffer.concat(chunks).toString('utf8').trim();
+  if (!raw) return {};
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+function extractTelegramMessage(update = {}) {
   const message = update.message || update.edited_message;
   if (!message) return null;
 
@@ -209,7 +227,8 @@ function registerTelegramMariah(receiver, logger = console) {
     res.status(200).json({ ok: true });
 
     try {
-      await handleTelegramUpdate(req.body, logger);
+      const update = await readJsonBody(req);
+      await handleTelegramUpdate(update, logger);
     } catch (err) {
       logger.error('Erro no Telegram Mariah:', err.message);
     }
