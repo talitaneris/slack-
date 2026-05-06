@@ -149,9 +149,12 @@ async function getPrivateContextForAgent(agentKey) {
     }
   }
 
-  if (parts.length === 0) return '';
+  if (parts.length === 0) {
+    console.warn(`⚠️ Contexto privado não carregou para ${agentKey}: nenhum documento retornou conteúdo.`);
+    return '';
+  }
 
-  return truncateMiddle(
+  const context = truncateMiddle(
     [
       'CONTEXTO PRIVADO TNeris:',
       'Use como fonte de verdade. Não exponha dados sensíveis sem necessidade. Se houver conflito, este contexto vence o prompt antigo.',
@@ -160,6 +163,9 @@ async function getPrivateContextForAgent(agentKey) {
     ].join('\n'),
     MAX_CONTEXT_CHARS
   );
+
+  console.log(`📚 Contexto privado carregado para ${agentKey}: ${parts.length} documentos, ${context.length} caracteres.`);
+  return context;
 }
 
 module.exports = { getPrivateContextForAgent };
