@@ -84,6 +84,7 @@ const AGENT_DOCS = {
     '05-squad/canais-agentes.md',
   ],
   assistente: [
+    '05-squad/mariah-agente-executiva.md',
     '00-identidade/talita-saude-rotina.md',
     '00-identidade/talita-reset-pessoal.md',
     '05-squad/canais-agentes.md',

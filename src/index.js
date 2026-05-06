@@ -8,6 +8,7 @@ require('dotenv').config();
   const { refreshAll, getCache, getPautas, isCacheStale } = require('./curadoria/crawler');
   const { registerApprovalHandler } = require('./handlers/approval');                                            
   const { registerWebhooks } = require('./webhooks/index');                                                      
+  const { registerTelegramMariah } = require('./telegram/mariah');
    
   // Validação das variáveis de ambiente obrigatórias                                                            
   const REQUIRED_ENV = ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET', 'ANTHROPIC_API_KEY'];
@@ -88,6 +89,7 @@ receiver.router.get('/sistemadeconteudo', (req, res) => {
    
   // Registra os endpoints de webhook no receiver Express                                                        
   registerWebhooks(receiver, app.client, console);          
+  registerTelegramMariah(receiver, console);
 
   // Keep-alive: pinga o próprio serviço a cada 14 min para não hibernar no Render free                          
   function startKeepAlive(hostname) {
@@ -108,7 +110,7 @@ receiver.router.get('/sistemadeconteudo', (req, res) => {
     await app.start(port);
 
     console.log(`⚡ Squad TNeris Bot rodando na porta ${port}`);                                                 
-    console.log('👥 Agentes: Lua, Jay, Sofia, Mari, Lia, Marta, Vega, People, Alex, Paulo, Lens, Assistente');
+    console.log('👥 Agentes: Nara, Jay, Sofia, Mari, Lia, Marta, Vega, People, Alex, Paulo, Lens, Mariah');
                                                                                                                  
     // Render injeta RENDER_EXTERNAL_HOSTNAME automaticamente na URL pública do serviço
     if (process.env.RENDER_EXTERNAL_HOSTNAME) {                                                                  
