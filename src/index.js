@@ -8,7 +8,7 @@ require('dotenv').config();
   const { refreshAll, getCache, getPautas, isCacheStale } = require('./curadoria/crawler');
   const { registerApprovalHandler } = require('./handlers/approval');                                            
   const { registerWebhooks } = require('./webhooks/index');                                                      
-  const { registerTelegramMariah } = require('./telegram/mariah');
+  const { registerTelegramMariah, setTelegramWebhook } = require('./telegram/mariah');
    
   // Validação das variáveis de ambiente obrigatórias                                                            
   const REQUIRED_ENV = ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET', 'ANTHROPIC_API_KEY'];
@@ -115,6 +115,7 @@ receiver.router.get('/sistemadeconteudo', (req, res) => {
     // Render injeta RENDER_EXTERNAL_HOSTNAME automaticamente na URL pública do serviço
     if (process.env.RENDER_EXTERNAL_HOSTNAME) {                                                                  
       startKeepAlive(process.env.RENDER_EXTERNAL_HOSTNAME); 
+      await setTelegramWebhook(`https://${process.env.RENDER_EXTERNAL_HOSTNAME}`, console);
     }                                                                                                            
    
     // Inicia o scheduler de rotinas diárias (8h BRT)                                                            

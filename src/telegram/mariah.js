@@ -47,6 +47,35 @@ async function telegramRequest(method, payload) {
   return response.json();
 }
 
+async function setTelegramWebhook(publicBaseUrl, logger = console) {
+  if (!process.env.TELEGRAM_BOT_TOKEN) {
+    logger.warn('Telegram webhook não configurado: TELEGRAM_BOT_TOKEN ausente.');
+    return;
+  }
+
+  const baseUrl = (publicBaseUrl || '').replace(/\/+$/, '');
+  if (!baseUrl) {
+    logger.warn('Telegram webhook não configurado: URL pública ausente.');
+    return;
+  }
+
+  const payload = {
+    url: `${baseUrl}/telegram/webhook`,
+    allowed_updates: ['message', 'edited_message'],
+  };
+
+  if (process.env.TELEGRAM_WEBHOOK_SECRET) {
+    payload.secret_token = process.env.TELEGRAM_WEBHOOK_SECRET;
+  }
+
+  try {
+    const result = await telegramRequest('setWebhook', payload);
+    logger.info(`Telegram webhook configurado: ${JSON.stringify(result).slice(0, 220)}`);
+  } catch (err) {
+    logger.error(`Erro ao configurar Telegram webhook: ${err.message}`);
+  }
+}
+
 async function sendTelegramMessage(chatId, text) {
   return telegramRequest('sendMessage', {
     chat_id: chatId,
@@ -189,4 +218,4 @@ function registerTelegramMariah(receiver, logger = console) {
   logger.info('Telegram Mariah registrado: /telegram/webhook | /telegram/status');
 }
 
-module.exports = { registerTelegramMariah, handleTelegramUpdate };
+module.exports = { registerTelegramMariah, handleTelegramUpdate, setTelegramWebhook };
