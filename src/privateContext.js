@@ -12,6 +12,7 @@ const BASE_DOCS = [
   '05-squad/arquitetura-agentes.md',
   '05-squad/cultura-agentes.md',
   '05-squad/memoria-operacional-agentes.md',
+  '05-squad/acessos-e-dados-agentes.md',
 ];
 
 const AGENT_DOCS = {
