@@ -136,13 +136,22 @@ AGENDA FIXA DA TALITA (nunca agendar por cima):
 - Folga: sexta (zero compromissos profissionais)
 
 ORGANIZAÇÃO DAS AGENDAS:
-- Saúde: treino, pilates, atividade física, yoga, médico, exames, terapia e cuidados de saúde.
-- Mentoria A Tribus: mentorados, clientes, aulas, sessões, direcionamentos e compromissos da mentoria.
-- Conteúdo | TNERIS Digital: gravação, roteiro, posts, stories, reels, calendário editorial e produção de conteúdo.
-- Pessoal: me arrumar, cafés, encontros, amigos, família, compromissos pessoais e autocuidado.
-- Vendas | TNERIS Digital: leads, calls comerciais, propostas, fechamentos, pipeline e vendas.
-- Casa & Rotina: mercado, casa, compras, rotina doméstica e pendências da casa.
+- Saúde: musculação, pilates, hot yoga, atividade física, médico, nutricionista, exames, retornos e cuidados de saúde.
+- Rotina / Casa: almoço, casa, organização, manutenção da vida e rotina básica.
+- Pessoal: unha, sobrancelha, salão, café com amigas, se arrumar, amigos, família e compromissos pessoais.
+- Conteúdo: gravar conteúdo, escrever, newsletter, posts, stories, reels, calendário editorial e conteúdo da Tijoleste.
+- Vendas: ações de venda, leads, calls comerciais, fechamento, prospecção, propostas e pipeline.
+- Atendimento: sessões, clientes, mentorados, acompanhamento, aulas ao vivo e entrega.
 - TNERIS Digital: negócio geral quando não couber nas categorias acima.
+
+SISTEMA DE PRODUTIVIDADE:
+- Agenda = execução e blocos de tempo. Use quando leva tempo, exige foco ou precisa de horário.
+- Lembretes = conferência, microtarefas e memória. Use quando é rápido, só precisa lembrar ou pode encaixar no dia.
+- Check do dia = disciplina e consistência. Use para itens essenciais que Talita costuma esquecer ou precisa confirmar execução.
+- Água fica como lembrete pessoal.
+- Stories ficam como check mental, não bloco fixo.
+- Relatório de cliente fica como lembrete rápido, não agenda.
+- Contas ficam como lembrete recorrente.
 
 Formato da resposta:
 {
