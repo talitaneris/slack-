@@ -170,6 +170,7 @@ function extractTelegramMessage(update = {}) {
     text: text.trim(),
     hasVoice: !!voice,
     hasPhoto: !!photo,
+    voiceFileId: voice?.file_id || null,
   };
 }
 
@@ -177,6 +178,30 @@ function isAllowedChat(chatId) {
   const allowed = process.env.TELEGRAM_ALLOWED_CHAT_ID;
   if (!allowed) return true;
   return String(chatId) === String(allowed);
+}
+
+async function transcribeVoice(fileId, logger = console) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+
+  const fileRes = await fetch(`${TELEGRAM_API}/bot${token}/getFile?file_id=${fileId}`);
+  const fileData = await fileRes.json();
+  const filePath = fileData.result.file_path;
+
+  const audioRes = await fetch(`${TELEGRAM_API}/file/bot${token}/${filePath}`);
+  const audioBuffer = Buffer.from(await audioRes.arrayBuffer());
+
+  const { GoogleGenAI } = await import('@google/genai');
+  const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
+
+  const result = await ai.models.generateContent({
+    model: 'gemini-2.0-flash',
+    contents: [
+      { inlineData: { mimeType: 'audio/ogg', data: audioBuffer.toString('base64') } },
+      { text: 'Transcreva este áudio em português.' },
+    ],
+  });
+
+  return result.text || '';
 }
 
 async function handleTelegramUpdate(update, logger = console) {
@@ -200,7 +225,13 @@ async function handleTelegramUpdate(update, logger = console) {
   let userText = msg.text;
 
   if (!userText && msg.hasVoice) {
-    userText = 'Talita enviou um audio no Telegram. A transcricao automatica ainda nao esta conectada. Responda como Mariah: diga que recebeu, peça uma frase-guia se necessario e explique como vai organizar assim que a transcricao estiver ativa.';
+    try {
+      userText = await transcribeVoice(msg.voiceFileId, logger);
+      if (!userText) throw new Error('Transcrição vazia');
+    } catch (err) {
+      logger.error('Erro ao transcrever áudio:', err.message);
+      userText = 'Talita enviou um áudio mas não consegui transcrever. Me conta o que era?';
+    }
   }
 
   if (!userText && msg.hasPhoto) {
@@ -277,3 +308,4 @@ function registerTelegramMariah(receiver, logger = console) {
 }
 
 module.exports = { registerTelegramMariah, handleTelegramUpdate, setTelegramWebhook };
+
