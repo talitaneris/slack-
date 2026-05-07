@@ -99,21 +99,22 @@ async function sendTelegramVoice(chatId, audioBuffer) {
 
 async function textToSpeech(text) {
   const googleKey = process.env.GOOGLE_API_KEY;
-  const body = {text = text
-  .replace(/\*\*(.*?)\*\*/g, '$1')
-  .replace(/\*(.*?)\*/g, '$1')
-  .replace(/^[-•]\s*/gm, '')
-  .replace(/#{1,6}\s*/g, '')
-  .replace(/\n{2,}/g, '. ')
-  .replace(/\n/g, ', ')
-  .trim();
+  const spokenText = text
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/^[-•]\s*/gm, '')
+    .replace(/#{1,6}\s*/g, '')
+    .replace(/\n{2,}/g, '. ')
+    .replace(/\n/g, ', ')
+    .trim();
 
-    input: { text: text.slice(0, 4000) },
+  const body = {
+    input: { text: spokenText.slice(0, 4000) },
     voice: {
-  languageCode: 'pt-BR',
-  name: 'pt-BR-Neural2-C',
-  ssmlGender: 'FEMALE',
-},
+      languageCode: 'pt-BR',
+      name: 'pt-BR-Neural2-C',
+      ssmlGender: 'FEMALE',
+    },
     audioConfig: {
       audioEncoding: 'OGG_OPUS',
     },
@@ -373,6 +374,5 @@ function registerTelegramMariah(receiver, logger) {
 }
 
 module.exports = { registerTelegramMariah, handleTelegramUpdate, setTelegramWebhook };
-
 
 
