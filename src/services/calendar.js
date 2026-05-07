@@ -16,6 +16,61 @@ const { google } = require('googleapis');
 const CALENDAR_ID = process.env.GOOGLE_CALENDAR_ID || 'primary';
 const WRITE_CALENDAR_ID = process.env.GOOGLE_CALENDAR_WRITE_ID || 'primary';
 
+const CALENDAR_ROUTES = {
+  saude: process.env.GOOGLE_CALENDAR_SAUDE_ID || '4ff3b2194e9642783c6016eba59b647f776e8eac63b29488b11f923f75365da9@group.calendar.google.com',
+  conteudo: process.env.GOOGLE_CALENDAR_CONTEUDO_ID || '015965a5a3092b4add5977257ab433f1d8df831a2ce97e2744ce1c1f8913cd17@group.calendar.google.com',
+  mentoria: process.env.GOOGLE_CALENDAR_MENTORIA_ID || '548525d3ec1b96916132377efae9bb5fa65918b31aa4bd80d7342581e9ea64d9@group.calendar.google.com',
+  pessoal: process.env.GOOGLE_CALENDAR_PESSOAL_ID || '829be334ad2a458e0e663871311a4a31030203de45d5681a048be138869a43b0@group.calendar.google.com',
+  vendas: process.env.GOOGLE_CALENDAR_VENDAS_ID || '59052868f8deb11a8058f5fedc0e303b9057fa30ff753b7f69954ed90083fece@group.calendar.google.com',
+  casa: process.env.GOOGLE_CALENDAR_CASA_ID || '2bd6305fef2d15792b0dfab81bbb3740c5ab34e6901812148ffd5a6d96a821dc@group.calendar.google.com',
+  principal: process.env.GOOGLE_CALENDAR_PRINCIPAL_ID || 'contato@talitaneris.com.br',
+};
+
+function normalizeText(text = '') {
+  return String(text)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function inferCalendarRoute(titulo = '', descricao = '') {
+  const text = normalizeText(`${titulo} ${descricao}`);
+
+  const matches = words => words.some(word => text.includes(word));
+
+  if (matches([
+    'pilates', 'treino', 'treinar', 'musculacao', 'cardio', 'yoga', 'hot yoga',
+    'medico', 'medica', 'consulta', 'exame', 'nutri', 'nutricionista',
+    'psicologa', 'psicologo', 'terapia', 'dentista', 'estetica', 'saude',
+  ])) return { key: 'saude', calendarId: CALENDAR_ROUTES.saude, label: 'Saúde' };
+
+  if (matches([
+    'conteudo', 'gravar', 'gravacao', 'roteiro', 'reels', 'post', 'posts',
+    'story', 'stories', 'carrossel', 'canva', 'copy', 'editorial',
+  ])) return { key: 'conteudo', calendarId: CALENDAR_ROUTES.conteudo, label: 'Conteúdo | TNERIS Digital' };
+
+  if (matches([
+    'mentoria', 'mentorad', 'tribus', 'a tribus', 'aula', 'aluna', 'cliente',
+    'sessao', 'direcionamento', 'grupo',
+  ])) return { key: 'mentoria', calendarId: CALENDAR_ROUTES.mentoria, label: 'Mentoria A Tribus | Calendário' };
+
+  if (matches([
+    'venda', 'vendas', 'comercial', 'lead', 'leads', 'diagnostico', 'call',
+    'reuniao de venda', 'fechamento', 'proposta', 'pipeline',
+  ])) return { key: 'vendas', calendarId: CALENDAR_ROUTES.vendas, label: 'Vendas | TNERIS Digital' };
+
+  if (matches([
+    'me arrumar', 'arrumar', 'cafe', 'almoco', 'jantar', 'amiga', 'amigo',
+    'familia', 'sair', 'salão', 'salao', 'unha', 'cabelo', 'pessoal',
+  ])) return { key: 'pessoal', calendarId: CALENDAR_ROUTES.pessoal, label: 'Pessoal' };
+
+  if (matches([
+    'mercado', 'casa', 'rotina', 'limpeza', 'compras', 'farmacia',
+  ])) return { key: 'casa', calendarId: CALENDAR_ROUTES.casa, label: 'Casa & Rotina' };
+
+  return { key: 'principal', calendarId: WRITE_CALENDAR_ID === 'primary' ? CALENDAR_ROUTES.principal : WRITE_CALENDAR_ID, label: 'TNERIS Digital' };
+}
+
 async function getReadableCalendarIds(calendar) {
   if (CALENDAR_ID !== 'all') return [{ id: CALENDAR_ID, summary: '' }];
 
@@ -212,8 +267,9 @@ async function criarEvento(titulo, inicio, fim, descricao = '') {
     if (!auth) return 'Google Calendar não configurado.';
 
     const calendar = google.calendar({ version: 'v3', auth });
+    const route = inferCalendarRoute(titulo, descricao);
     const res = await calendar.events.insert({
-      calendarId: WRITE_CALENDAR_ID,
+      calendarId: route.calendarId,
       requestBody: {
         summary: titulo,
         description: descricao,
@@ -224,7 +280,7 @@ async function criarEvento(titulo, inicio, fim, descricao = '') {
 
     const link = res.data.htmlLink;
     const hora = inicio.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'long', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-    return `Evento criado: *${titulo}* — ${hora}\n${link}`;
+    return `Evento criado em *${route.label}*: *${titulo}* — ${hora}\n${link}`;
 
   } catch (err) {
     console.error('[calendar] Erro ao criar evento:', err.message);

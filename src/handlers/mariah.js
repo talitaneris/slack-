@@ -135,6 +135,15 @@ AGENDA FIXA DA TALITA (nunca agendar por cima):
 - Gravações: quinta (dia protegido)
 - Folga: sexta (zero compromissos profissionais)
 
+ORGANIZAÇÃO DAS AGENDAS:
+- Saúde: treino, pilates, atividade física, yoga, médico, exames, terapia e cuidados de saúde.
+- Mentoria A Tribus: mentorados, clientes, aulas, sessões, direcionamentos e compromissos da mentoria.
+- Conteúdo | TNERIS Digital: gravação, roteiro, posts, stories, reels, calendário editorial e produção de conteúdo.
+- Pessoal: me arrumar, cafés, encontros, amigos, família, compromissos pessoais e autocuidado.
+- Vendas | TNERIS Digital: leads, calls comerciais, propostas, fechamentos, pipeline e vendas.
+- Casa & Rotina: mercado, casa, compras, rotina doméstica e pendências da casa.
+- TNERIS Digital: negócio geral quando não couber nas categorias acima.
+
 Formato da resposta:
 {
   "acao": "listar" | "criar" | "deletar" | "buscar" | "nenhuma",
