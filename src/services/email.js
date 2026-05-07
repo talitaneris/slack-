@@ -1,40 +1,22 @@
 'use strict';
 
-const { ImapFlow } = require('imapflow');
-
 function cleanEnv(value, fallback = '') {
   return String(value || fallback).trim();
 }
 
+const ACCOUNTS_BASE = cleanEnv(process.env.ZOHO_ACCOUNTS_BASE, 'https://accounts.zoho.com');
+const MAIL_BASE = cleanEnv(process.env.ZOHO_MAIL_BASE, 'https://mail.zoho.com');
+
 function isEmailConfigured() {
   return !!(
-    process.env.ZOHO_EMAIL_USER &&
-    process.env.ZOHO_EMAIL_PASSWORD
+    process.env.ZOHO_OAUTH_CLIENT_ID &&
+    process.env.ZOHO_OAUTH_CLIENT_SECRET &&
+    process.env.ZOHO_OAUTH_REFRESH_TOKEN
   );
-}
-
-function getEmailClient() {
-  return new ImapFlow({
-    host: cleanEnv(process.env.ZOHO_IMAP_HOST, 'imap.zoho.com'),
-    port: Number(cleanEnv(process.env.ZOHO_IMAP_PORT, '993')),
-    secure: cleanEnv(process.env.ZOHO_IMAP_SECURE, 'true') !== 'false',
-    auth: {
-      user: cleanEnv(process.env.ZOHO_EMAIL_USER),
-      pass: cleanEnv(process.env.ZOHO_EMAIL_PASSWORD),
-    },
-    logger: false,
-  });
 }
 
 function getSinceDate(hours = 14) {
   return new Date(Date.now() - hours * 60 * 60 * 1000);
-}
-
-function formatAddress(address = {}) {
-  const name = address.name || '';
-  const addr = address.address || '';
-  if (name && addr) return `${name} <${addr}>`;
-  return name || addr || 'remetente desconhecido';
 }
 
 function classifyEmail({ from = '', subject = '' }) {
@@ -73,41 +55,163 @@ function formatEmailLine(item) {
   return `• ${item.time} — ${unread}${item.category}: ${item.from} | ${item.subject}`;
 }
 
+function normalizeZohoList(payload) {
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.accounts)) return payload.accounts;
+  if (Array.isArray(payload?.folders)) return payload.folders;
+  if (Array.isArray(payload?.messages)) return payload.messages;
+  if (Array.isArray(payload)) return payload;
+  return [];
+}
+
+function pickAccount(accounts) {
+  const preferred = cleanEnv(process.env.ZOHO_MAIL_ACCOUNT_ADDRESS).toLowerCase();
+  if (preferred) {
+    return accounts.find(account => {
+      const address = String(account.mailboxAddress || account.emailAddress || account.primaryEmailAddress || '').toLowerCase();
+      return address === preferred;
+    }) || accounts[0];
+  }
+
+  return accounts.find(account => account.isDefault || account.isPrimary) || accounts[0];
+}
+
+function pickInboxFolder(folders) {
+  return folders.find(folder => {
+    const name = String(folder.folderName || folder.name || '').toLowerCase();
+    const type = String(folder.folderType || folder.type || '').toLowerCase();
+    return name === 'inbox' || type === 'inbox';
+  }) || folders[0];
+}
+
+function getAccountId(account) {
+  return account?.accountId || account?.id || account?.accountID;
+}
+
+function getFolderId(folder) {
+  return folder?.folderId || folder?.id || folder?.folderID;
+}
+
+function getMessageTime(message) {
+  const raw = message.receivedTime || message.receivedtime || message.receivedDate || message.sentDateInGMT || message.sentDate || message.date;
+  const millis = Number(raw);
+  if (Number.isFinite(millis) && millis > 0) return new Date(millis);
+  if (raw) {
+    const parsed = new Date(raw);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  return new Date();
+}
+
+function getMessageSeen(message) {
+  if (typeof message.read === 'boolean') return message.read;
+  if (typeof message.isRead === 'boolean') return message.isRead;
+  if (typeof message.status === 'string') return message.status.toLowerCase().includes('read');
+  return false;
+}
+
+async function zohoJson(url, accessToken, options = {}) {
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      Authorization: `Zoho-oauthtoken ${accessToken}`,
+      Accept: 'application/json',
+      ...(options.headers || {}),
+    },
+  });
+
+  const text = await response.text();
+  let payload = {};
+
+  try {
+    payload = text ? JSON.parse(text) : {};
+  } catch {
+    payload = { raw: text };
+  }
+
+  if (!response.ok) {
+    const detail = payload?.message || payload?.error || text || response.statusText;
+    throw new Error(`Zoho API ${response.status}: ${detail}`);
+  }
+
+  return payload;
+}
+
+async function refreshAccessToken() {
+  const params = new URLSearchParams({
+    grant_type: 'refresh_token',
+    client_id: cleanEnv(process.env.ZOHO_OAUTH_CLIENT_ID),
+    client_secret: cleanEnv(process.env.ZOHO_OAUTH_CLIENT_SECRET),
+    refresh_token: cleanEnv(process.env.ZOHO_OAUTH_REFRESH_TOKEN),
+  });
+
+  const response = await fetch(`${ACCOUNTS_BASE}/oauth/v2/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString(),
+  });
+
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok || !payload.access_token) {
+    throw new Error(payload.error || payload.message || `Zoho OAuth ${response.status}`);
+  }
+
+  return payload.access_token;
+}
+
+async function getAccountAndInbox(accessToken) {
+  const accountsPayload = await zohoJson(`${MAIL_BASE}/api/accounts`, accessToken);
+  const accounts = normalizeZohoList(accountsPayload);
+  if (accounts.length === 0) throw new Error('Nenhuma conta Zoho Mail encontrada.');
+
+  const account = pickAccount(accounts);
+  const accountId = getAccountId(account);
+  if (!accountId) throw new Error('Nao consegui identificar accountId da Zoho.');
+
+  const foldersPayload = await zohoJson(`${MAIL_BASE}/api/accounts/${accountId}/folders`, accessToken);
+  const folders = normalizeZohoList(foldersPayload);
+  if (folders.length === 0) throw new Error('Nenhuma pasta Zoho Mail encontrada.');
+
+  const inbox = pickInboxFolder(folders);
+  const folderId = getFolderId(inbox);
+  if (!folderId) throw new Error('Nao consegui identificar folderId da INBOX.');
+
+  return { account, accountId, inbox, folderId };
+}
+
+function buildMessagesUrl(accountId, folderId, limit) {
+  const params = new URLSearchParams({
+    folderId: String(folderId),
+    limit: String(Math.max(limit, 25)),
+    start: '1',
+  });
+
+  return `${MAIL_BASE}/api/accounts/${accountId}/messages/view?${params.toString()}`;
+}
+
 async function listarEmailsManha({ limit = 12, hours = 14 } = {}) {
   if (!isEmailConfigured()) {
     return [
-      'Zoho Mail nao configurado.',
-      'Faltam variaveis: ZOHO_EMAIL_USER e ZOHO_EMAIL_PASSWORD.',
-      'Opcional: ZOHO_IMAP_HOST=imap.zoho.com, ZOHO_IMAP_PORT=993.',
+      'Zoho Mail API nao configurada.',
+      'Faltam variaveis: ZOHO_OAUTH_CLIENT_ID, ZOHO_OAUTH_CLIENT_SECRET e ZOHO_OAUTH_REFRESH_TOKEN.',
     ].join('\n');
   }
 
-  const client = getEmailClient();
-  const since = getSinceDate(hours);
-
   try {
-    await client.connect();
-    const lock = await client.getMailboxLock('INBOX');
+    const accessToken = await refreshAccessToken();
+    const { accountId, folderId } = await getAccountAndInbox(accessToken);
+    const payload = await zohoJson(buildMessagesUrl(accountId, folderId, limit), accessToken);
+    const since = getSinceDate(hours).getTime();
 
-    try {
-      const messages = [];
-      const uids = await client.search({ since });
-
-      if (!uids || uids.length === 0) {
-        return 'Nenhum e-mail novo/relevante encontrado no periodo analisado.';
-      }
-
-      for await (const msg of client.fetch(uids, {
-        envelope: true,
-        flags: true,
-        internalDate: true,
-      }, { uid: true })) {
-        const from = formatAddress(msg.envelope?.from?.[0]);
-        const subject = msg.envelope?.subject || '(sem assunto)';
+    const messages = normalizeZohoList(payload)
+      .map(message => {
+        const from = message.fromAddress || message.sender || message.from || message.senderEmailAddress || 'remetente desconhecido';
+        const subject = message.subject || '(sem assunto)';
         const category = classifyEmail({ from, subject });
-        const seen = Array.from(msg.flags || []).includes('\\Seen');
-        const date = msg.internalDate || msg.envelope?.date || new Date();
-        const time = new Date(date).toLocaleString('pt-BR', {
+        const date = getMessageTime(message);
+        const seen = getMessageSeen(message);
+        const time = date.toLocaleString('pt-BR', {
           timeZone: 'America/Sao_Paulo',
           day: '2-digit',
           month: '2-digit',
@@ -115,37 +219,27 @@ async function listarEmailsManha({ limit = 12, hours = 14 } = {}) {
           minute: '2-digit',
         });
 
-        messages.push({
+        return {
           from,
           subject,
           category,
           seen,
           time,
           priority: emailPriority(category, seen),
-          date: new Date(date).getTime(),
-        });
-      }
+          date: date.getTime(),
+        };
+      })
+      .filter(message => message.date >= since || !message.seen)
+      .sort((a, b) => a.priority - b.priority || b.date - a.date)
+      .slice(0, limit);
 
-      if (messages.length === 0) {
-        return 'Nenhum e-mail novo/relevante encontrado no periodo analisado.';
-      }
-
-      return messages
-        .sort((a, b) => a.priority - b.priority || b.date - a.date)
-        .slice(0, limit)
-        .map(formatEmailLine)
-        .join('\n');
-    } finally {
-      lock.release();
+    if (messages.length === 0) {
+      return 'Nenhum e-mail novo/relevante encontrado no periodo analisado.';
     }
+
+    return messages.map(formatEmailLine).join('\n');
   } catch (err) {
-    return `Erro ao consultar Zoho Mail: ${err.message}`;
-  } finally {
-    try {
-      await client.logout();
-    } catch {
-      // Ignora erro de logout para nao quebrar rotina.
-    }
+    return `Erro ao consultar Zoho Mail API: ${err.message}`;
   }
 }
 
