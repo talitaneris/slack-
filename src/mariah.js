@@ -5,6 +5,7 @@ const { callClaude } = require('../claude');
 const { processMariahCalendar } = require('../handlers/mariah');
 const { readMemory, appendMemory } = require('../memory/index');
 const { getPrivateContextForAgent } = require('../privateContext');
+const { listarEmailsManha, isEmailConfigured } = require('./services/email');
 
 const TELEGRAM_API = 'https://api.telegram.org';
 
@@ -88,7 +89,6 @@ async function sendTelegramMessage(chatId, text) {
 
 async function sendTelegramVoice(chatId, audioBuffer) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-
   const formData = new FormData();
   formData.append('chat_id', String(chatId));
   formData.append('voice', new Blob([audioBuffer], { type: 'audio/ogg; codecs=opus' }), 'voice.ogg');
@@ -108,7 +108,6 @@ async function sendTelegramVoice(chatId, audioBuffer) {
 
 async function textToSpeech(text) {
   const googleKey = process.env.GOOGLE_API_KEY;
-
   const body = {
     input: { text: text.slice(0, 4000) },
     voice: {
@@ -131,7 +130,6 @@ async function textToSpeech(text) {
   );
 
   const data = await response.json();
-
   if (!response.ok) {
     throw new Error(`TTS falhou: ${JSON.stringify(data).slice(0, 200)}`);
   }
@@ -143,13 +141,11 @@ async function shouldRespondWithVoice(userText, responseText, sourceIsVoice) {
   if (sourceIsVoice) return true;
 
   const lowerUser = userText.toLowerCase();
-
   const voiceTriggers = [
     'como voce esta', 'to bem', 'cansada', 'animada',
     'preocupada', 'feliz', 'triste', 'preciso conversar',
     'me ajuda', 'o que voce acha', 'sua opiniao'
   ];
-
   const textTriggers = [
     'lista', 'checklist', 'tarefas', 'pendencias', 'agenda',
     'reuniao', 'horario', 'relatorio', 'dados', 'numeros'
@@ -165,6 +161,15 @@ async function shouldRespondWithVoice(userText, responseText, sourceIsVoice) {
 }
 
 async function processMariahText(userText, source) {
+  const lowerText = userText.toLowerCase();
+  const emailTriggers = ['email', 'e-mail', 'caixa', 'inbox', 'mensagem', 'mensagens', 'correio', 'zoho'];
+  const pedindoEmail = emailTriggers.some(t => lowerText.includes(t));
+
+  if (pedindoEmail && isEmailConfigured()) {
+    const emails = await listarEmailsManha({ limit: 12, hours: 24 });
+    return formatForTelegram(`📬 E-mails recentes:\n\n${emails}`);
+  }
+
   const system = await buildMariahSystem();
   const calendarResponse = await processMariahCalendar(userText, system);
   const response = formatForTelegram(calendarResponse || await callClaude(system, userText, 600));
@@ -232,6 +237,7 @@ async function readJsonBody(req) {
 
 function extractTelegramMessage(update) {
   if (!update) return null;
+
   const message = update.message || update.edited_message;
   if (!message) return null;
 
@@ -299,6 +305,7 @@ async function transcribeVoice(fileId) {
 
 async function handleTelegramUpdate(update, logger) {
   if (!logger) logger = console;
+
   const msg = extractTelegramMessage(update);
   if (!msg || !msg.chatId) return;
 
@@ -334,6 +341,7 @@ async function handleTelegramUpdate(update, logger) {
   if (!userText) return;
 
   const response = await processMariahText(userText, sourceIsVoice ? 'Audio' : 'Telegram');
+
   const useVoice = await shouldRespondWithVoice(userText, response, sourceIsVoice);
 
   if (useVoice) {
