@@ -62,7 +62,10 @@ function getDirectListRange(text) {
 
   const asksAgenda = ['agenda', 'compromisso', 'compromissos', 'horário', 'horario', 'livre', 'ocupada', 'ocupado']
     .some(word => lower.includes(word));
-  if (!asksAgenda) return null;
+  const asksSchedule = ['o que tenho', 'o que tem', 'meus horários', 'meus horarios', 'minha manhã', 'minha manha', 'meu dia']
+    .some(phrase => lower.includes(phrase));
+  const hasRelativeDate = lower.includes('hoje') || lower.includes('amanhã') || lower.includes('amanha');
+  if (!asksAgenda && !(asksSchedule && hasRelativeDate)) return null;
 
   const today = getBrtDateParts();
   let target = today;
