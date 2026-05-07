@@ -11,7 +11,14 @@
  */
 
 const { callClaude }    = require('../claude');
-const { listarEventos, listarAgendasDisponiveis, criarEvento, deletarEvento, buscarEvento } = require('../services/calendar');
+const {
+  listarEventos,
+  listarAgendasDisponiveis,
+  diagnosticarEventos,
+  criarEvento,
+  deletarEvento,
+  buscarEvento,
+} = require('../services/calendar');
 
 function getBrtNow() {
   return new Intl.DateTimeFormat('pt-BR', {
@@ -113,6 +120,11 @@ function isCalendarDiagnosticRequest(text) {
   );
 }
 
+function isEventDiagnosticRequest(text) {
+  const lower = text.toLowerCase();
+  return lower.includes('diagnosticar agenda') || lower.includes('diagnóstico agenda') || lower.includes('diagnostico agenda');
+}
+
 // System prompt especial que faz a Mariah retornar JSON estruturado para ações de agenda
 function getMariahCalendarSystem() {
   return `Você é Mariah, secretária pessoal da Talita. Analise a mensagem e retorne APENAS um JSON válido (sem markdown, sem texto extra).
@@ -176,6 +188,11 @@ async function processMariahCalendar(userMessage, systemPrompt) {
     }
 
     const directRange = getDirectListRange(userMessage);
+    if (directRange && isEventDiagnosticRequest(userMessage)) {
+      const calendarResult = await diagnosticarEventos(directRange.inicio, directRange.fim);
+      return `Diagnóstico de eventos para ${directRange.label}, ${directRange.periodo}:\n\n${calendarResult}`;
+    }
+
     if (directRange) {
       const calendarResult = await listarEventos(directRange.inicio, directRange.fim);
       return `Vou verificar sua agenda de ${directRange.label}, ${directRange.periodo}.\n\n*Agenda:*\n${calendarResult}`;

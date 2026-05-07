@@ -150,6 +150,54 @@ async function listarAgendasDisponiveis() {
   }
 }
 
+async function diagnosticarEventos(inicio, fim) {
+  try {
+    const auth = getAuth();
+    if (!auth) return 'Google Calendar não configurado.';
+
+    const calendar = google.calendar({ version: 'v3', auth });
+    const agendas = await getReadableCalendarIds(calendar);
+    const linhas = [];
+
+    for (const agenda of agendas) {
+      try {
+        const res = await calendar.events.list({
+          calendarId: agenda.id,
+          timeMin: inicio.toISOString(),
+          timeMax: fim.toISOString(),
+          singleEvents: true,
+          orderBy: 'startTime',
+          maxResults: 10,
+        });
+
+        const eventos = res.data.items || [];
+        if (eventos.length === 0) {
+          linhas.push(`• ${agenda.summary || agenda.id}: 0 eventos`);
+          continue;
+        }
+
+        linhas.push(`• ${agenda.summary || agenda.id}: ${eventos.length} evento(s)`);
+        eventos.forEach(ev => {
+          const hora = ev.start.dateTime
+            ? new Date(ev.start.dateTime).toLocaleString('pt-BR', {
+              timeZone: 'America/Sao_Paulo',
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+            : 'dia todo';
+          linhas.push(`  - ${hora} — ${ev.summary || 'Sem título'}`);
+        });
+      } catch (err) {
+        linhas.push(`• ${agenda.summary || agenda.id}: erro - ${err.message}`);
+      }
+    }
+
+    return linhas.join('\n');
+  } catch (err) {
+    return `Erro no diagnóstico da agenda: ${err.message}`;
+  }
+}
+
 /**
  * Cria um evento na agenda.
  * @param {string} titulo   - Nome do evento
@@ -243,4 +291,11 @@ async function buscarEvento(termo, dias = 30) {
   }
 }
 
-module.exports = { listarEventos, listarAgendasDisponiveis, criarEvento, deletarEvento, buscarEvento };
+module.exports = {
+  listarEventos,
+  listarAgendasDisponiveis,
+  diagnosticarEventos,
+  criarEvento,
+  deletarEvento,
+  buscarEvento,
+};
