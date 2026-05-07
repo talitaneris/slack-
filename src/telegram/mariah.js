@@ -5,6 +5,7 @@ const { callClaude } = require('../claude');
 const { processMariahCalendar } = require('../handlers/mariah');
 const { buildMariahMemoryContext, registrarNaMemoria } = require('../memory/mariah');
 const { getPrivateContextForAgent } = require('../privateContext');
+const { listarEventos } = require('../services/calendar');
 const { listarEmailsManha, isEmailConfigured, enviarEmail } = require('../services/email');
 const { criarReuniaoZoom, isZoomConfigured } = require('../services/zoom');
 
@@ -28,6 +29,7 @@ function formatForTelegram(text) {
     .replace(/^#{1,6}\s*/gm, '')
     .replace(/\*\*([^*\n][^*\n]*?)\*\*/g, '*$1*')
     .replace(/^\s*-{3,}\s*$/gm, '')
+    .replace(/\p{Extended_Pictographic}/gu, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
     .slice(0, 3800);
@@ -174,6 +176,8 @@ async function buildMariahSystem() {
     'NAO TOCA NUNCA: contratos, pagamentos, decisoes estrategicas, posicionamento, definir preco.',
     '',
     'IMPORTANTE: Voce TEM acesso ao email da Talita via Zoho Mail API e ao Google Calendar.',
+    'ESTILO: nao use emoji. Nao use titulo com seu nome nem titulo de briefing. Nao use texto corporativo grande. Responda curto, humano e acionavel.',
+    'PROIBIDO: dizer que nao tem acesso ao Zoho se o contexto trouxer e-mails da Zoho. Se houver erro tecnico, diga "a consulta falhou" e acione Nara.',
     '',
     agent.system,
   ].join('\n');
@@ -195,6 +199,78 @@ async function buildMariahSystem() {
   return system;
 }
 
+function getBrtDateParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+
+  const value = type => parts.find(part => part.type === type)?.value;
+  return {
+    year: value('year'),
+    month: value('month'),
+    day: value('day'),
+  };
+}
+
+function getBrtTodayRange() {
+  const { year, month, day } = getBrtDateParts();
+  return {
+    start: new Date(`${year}-${month}-${day}T00:00:00-03:00`),
+    end: new Date(`${year}-${month}-${day}T23:59:59-03:00`),
+    label: `${day}/${month}/${year}`,
+  };
+}
+
+function isBriefingRequest(text) {
+  const lower = text.toLowerCase();
+  return [
+    'briefing',
+    'resumo da manha',
+    'resumo da manhã',
+    'check do dia',
+    'meu dia',
+    'minha manha',
+    'minha manhã',
+    'prioridade de hoje',
+    'prioridades de hoje',
+  ].some(trigger => lower.includes(trigger));
+}
+
+async function buildManualBriefingPrompt() {
+  const { start, end, label } = getBrtTodayRange();
+  const agenda = await listarEventos(start, end);
+  const emails = await listarEmailsManha({ limit: 12, hours: 18 });
+
+  return [
+    `Data de hoje: ${label}.`,
+    '',
+    'AGENDA ATUAL — fonte Google Calendar:',
+    agenda,
+    '',
+    'E-MAILS ZOHO — fonte Zoho Mail API:',
+    emails,
+    '',
+    'Monte o briefing da Talita agora.',
+    'Regras:',
+    '- Nao use emoji.',
+    '- Nao coloque titulo com "Mariah" ou "Briefing Mariah".',
+    '- Nao diga que o dia esta livre se houver evento na agenda.',
+    '- Nao diga que nao tem acesso ao Zoho se os e-mails acima aparecerem.',
+    '- Nao devolva coleta para Talita. Se algo falhar, acione Nara em uma linha.',
+    '- Se precisar citar Nara, diga exatamente o que Nara vai verificar.',
+    '',
+    'Formato:',
+    'Leitura: 1 frase.',
+    'Agenda: compromissos principais em linhas curtas.',
+    'Inbox: somente o que pede atencao.',
+    'Prioridade: 1 foco para hoje.',
+    'Eu ja vou: o que voce ou Nara resolvem sem Talita.',
+  ].join('\n');
+}
+
 function isZoomRequest(text) {
   const lower = text.toLowerCase();
   if (lower.includes('zoom')) return true;
@@ -208,11 +284,22 @@ async function processMariahText(userText, source) {
   const emailTriggers = ['email', 'e-mail', 'caixa', 'inbox', 'mensagens do email', 'correio', 'zoho', 'listar email', 'ver email', 'meus emails'];
   const pedindoEmail = emailTriggers.some(t => lowerText.includes(t));
 
+  if (isBriefingRequest(userText)) {
+    try {
+      const system = await buildMariahSystem();
+      const prompt = await buildManualBriefingPrompt();
+      const response = await callClaude(system, prompt, 650);
+      return formatForTelegram(response);
+    } catch (err) {
+      return formatForTelegram('A consulta de agenda ou e-mail falhou. Vou acionar Nara para diagnosticar conexão de Google Calendar e Zoho.');
+    }
+  }
+
   if (pedindoEmail && isEmailConfigured()) {
     try {
       const emails = await listarEmailsManha({ limit: 12, hours: 24 });
       const system = await buildMariahSystem();
-      const prompt = `Aqui estão os e-mails recentes da Talita:\n\n${emails}\n\nResuma de forma clara e humana, como uma assistente executiva faria. Destaque o que precisa de atenção urgente, o que é financeiro importante e o que pode ignorar. Seja direta e concisa.`;
+      const prompt = `Aqui estão os e-mails recentes da Talita:\n\n${emails}\n\nResuma de forma clara e humana, como uma assistente executiva faria. Destaque o que precisa de atenção urgente, o que é financeiro importante e o que pode ignorar. Seja direta, sem emoji e sem título com seu nome.`;
       const response = await callClaude(system, prompt, 600);
       return formatForTelegram(response);
     } catch (err) {
@@ -306,25 +393,34 @@ function isAllowedChat(chatId) {
 
 async function transcribeVoice(fileId) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  const googleKey = process.env.GOOGLE_API_KEY;
+  const googleKey = process.env.GOOGLE_CLOUD_API_KEY || process.env.GOOGLE_API_KEY;
+  if (!googleKey) throw new Error('GOOGLE_CLOUD_API_KEY/GOOGLE_API_KEY ausente');
+
   const fileRes = await fetch(`${TELEGRAM_API}/bot${token}/getFile?file_id=${fileId}`);
   const fileData = await fileRes.json();
+  if (!fileRes.ok || !fileData.result?.file_path) {
+    throw new Error(`getFile falhou: ${fileRes.status}`);
+  }
   const filePath = fileData.result.file_path;
   const audioRes = await fetch(`${TELEGRAM_API}/file/bot${token}/${filePath}`);
+  if (!audioRes.ok) {
+    throw new Error(`download audio falhou: ${audioRes.status}`);
+  }
   const audioBuffer = Buffer.from(await audioRes.arrayBuffer());
   const audioBase64 = audioBuffer.toString('base64');
+  const model = process.env.GEMINI_TRANSCRIBE_MODEL || 'gemini-2.5-flash';
   const body = {
     contents: [
       {
         parts: [
-          { inline_data: { mime_type: 'audio/ogg', data: audioBase64 } },
-          { text: 'Transcreva este audio em portugues.' }
+          { inlineData: { mimeType: 'audio/ogg', data: audioBase64 } },
+          { text: 'Transcreva este audio em portugues do Brasil. Retorne somente a transcricao, sem comentario.' }
         ]
       }
     ]
   };
   const geminiRes = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -333,9 +429,10 @@ async function transcribeVoice(fileId) {
   );
   const geminiData = await geminiRes.json();
   if (!geminiRes.ok) {
-    throw new Error('Gemini status: ' + geminiRes.status);
+    const detail = geminiData?.error?.message || `Gemini status: ${geminiRes.status}`;
+    throw new Error(detail.slice(0, 180));
   }
-  return geminiData.candidates[0].content.parts[0].text || '';
+  return geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 
 async function handleTelegramUpdate(update, logger) {
@@ -438,4 +535,3 @@ function registerTelegramMariah(receiver, logger) {
 }
 
 module.exports = { registerTelegramMariah, handleTelegramUpdate, setTelegramWebhook, sendTelegramMessage };
-

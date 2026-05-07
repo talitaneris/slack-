@@ -140,7 +140,7 @@ async function buildMariahMorningInboxContext(logger = console) {
   try {
     const emails = await listarEmailsManha({ limit: 12, hours: 14 });
     return [
-      'E-MAILS DA MANHA — FONTE: Zoho Mail/IMAP.',
+      'E-MAILS DA MANHA — FONTE: Zoho Mail API.',
       emails,
       '',
       'REGRAS PARA MARIAH:',
@@ -169,6 +169,7 @@ const DAILY_ROUTINES = [
     channel: CHANNELS.talita,
     prompt: `Gere o resumo da manhã para Talita usando obrigatoriamente os blocos AGENDA ATUAL DE HOJE e E-MAILS DA MANHA que vêm abaixo. Use a data atual do sistema. Não peça a data. Não use lembretes antigos de Brenda/Carol se não estiverem no contexto atual.
 Regra central: Google Calendar ao vivo e Zoho Mail sao fontes da verdade. Não use rotina fixa como fato.
+Não use emoji. Não coloque título com "Mariah", "Briefing Mariah" ou nome de agente.
 Formato:
 Leitura: 1 frase sobre o dia citando os blocos da agenda.
 Agenda atual: liste os principais compromissos em linhas curtas.
@@ -594,9 +595,13 @@ async function runRoutine(routine, slackClient, logger) {
     }
 
     const text = formatForSlack(await callClaude(system, routinePrompt, maxTokens));
+    const messageText = agent.key === AGENTS.assistente.key
+      ? text
+      : `*${agent.title}* — ${agent.role}\n${text}`;
+
     await slackClient.chat.postMessage({
       channel,
-      text: `*${agent.title}* — ${agent.role}\n${text}`,
+      text: messageText,
     });
     logger.info(`✅ Rotina executada: ${agent.title} → ${channel}`);
   } catch (err) {
