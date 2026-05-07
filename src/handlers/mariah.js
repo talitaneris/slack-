@@ -2,7 +2,7 @@
 
 /**
  * Handler especializado para a Mariah — detecta intenções de agenda
- * e executa ações reais no Google Calendar da Talita.
+ * e executa ações no Google Calendar da Talita.
  *
  * Fluxo:
  * 1. Claude (Mariah) analisa a mensagem e retorna JSON com a ação + resposta

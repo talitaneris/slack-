@@ -110,20 +110,20 @@ async function buildMariahMorningAgendaContext(logger = console) {
   try {
     const agenda = await listarEventos(start, end);
     return [
-      `AGENDA REAL DE HOJE (${label}) — FONTE: Google Calendar ao vivo.`,
+      `AGENDA ATUAL DE HOJE (${label}) — FONTE: Google Calendar ao vivo.`,
       agenda,
       '',
       'REGRAS PARA MARIAH:',
-      '- Esta agenda real vence qualquer rotina fixa, memoria antiga ou suposicao.',
+      '- Esta agenda atual vence qualquer rotina fixa, memoria antiga ou suposicao.',
       '- Nao diga que o dia esta livre se houver eventos acima.',
-      '- Nao invente treino 8h30, aula 19h, folga ou dia protegido se nao estiver na agenda real.',
+      '- Nao invente treino 8h30, aula 19h, folga ou dia protegido se nao estiver na agenda atual.',
       '- Se a agenda vier com erro tecnico, diga que nao conseguiu consultar e acione Nara. Nao invente.',
-      '- No briefing, cite os principais blocos reais do dia e a protecao concreta de tempo.',
+      '- No briefing, cite os principais blocos do dia e a protecao concreta de tempo.',
     ].join('\n');
   } catch (err) {
-    logger.warn?.('Agenda real da Mariah indisponivel no briefing:', err.message);
+    logger.warn?.('Agenda atual da Mariah indisponivel no briefing:', err.message);
     return [
-      `AGENDA REAL DE HOJE (${label}) — ERRO AO CONSULTAR GOOGLE CALENDAR.`,
+      `AGENDA ATUAL DE HOJE (${label}) — ERRO AO CONSULTAR GOOGLE CALENDAR.`,
       `Erro: ${err.message}`,
       '',
       'REGRAS PARA MARIAH:',
@@ -143,7 +143,7 @@ async function buildMariahMorningInboxContext(logger = console) {
       'REGRAS PARA MARIAH:',
       '- Nao despeje e-mail inteiro no Slack.',
       '- Classifique em financeiro, comercial, suporte/risco, triagem ou baixo impacto.',
-      '- Leve para Talita apenas decisao real, risco ou oportunidade.',
+      '- Leve para Talita apenas decisao que depende dela, risco ou oportunidade.',
       '- Se Zoho nao estiver configurado, registre como acesso pendente. Nao finja que leu.',
     ].join('\n');
   } catch (err) {
@@ -164,16 +164,16 @@ const DAILY_ROUTINES = [
   {
     agent: AGENTS.assistente,
     channel: CHANNELS.talita,
-    prompt: `Gere o resumo da manhã para Talita usando obrigatoriamente os blocos AGENDA REAL DE HOJE e E-MAILS DA MANHA que vêm abaixo. Use a data atual do sistema. Não peça a data. Não use lembretes antigos de Brenda/Carol se não estiverem no contexto atual.
+    prompt: `Gere o resumo da manhã para Talita usando obrigatoriamente os blocos AGENDA ATUAL DE HOJE e E-MAILS DA MANHA que vêm abaixo. Use a data atual do sistema. Não peça a data. Não use lembretes antigos de Brenda/Carol se não estiverem no contexto atual.
 Regra central: Google Calendar ao vivo e Zoho Mail sao fontes da verdade. Não use rotina fixa como fato.
 Formato:
-Leitura: 1 frase sobre o dia citando os blocos reais.
-Agenda real: liste os principais compromissos reais em linhas curtas.
+Leitura: 1 frase sobre o dia citando os blocos da agenda.
+Agenda atual: liste os principais compromissos em linhas curtas.
 Inbox: e-mails importantes da noite/manha, agrupados por decisao, risco ou oportunidade. Se Zoho nao estiver configurado, diga acesso pendente em 1 linha.
-Proteção: qual bloco real precisa ser protegido.
+Proteção: qual bloco do dia precisa ser protegido.
 Decisão: só o que depende de Talita hoje.
 Eu ja vou: o que Mariah/Nara/agente dono vai resolver sem devolver para Talita.
-Proibido: dizer agenda livre, treino fixo, aula fixa ou dia protegido se isso não aparecer no bloco AGENDA REAL DE HOJE. Proibido fingir que leu e-mail se o Zoho nao estiver configurado.`,
+Proibido: dizer agenda livre, treino fixo, aula fixa ou dia protegido se isso não aparecer no bloco AGENDA ATUAL DE HOJE. Proibido fingir que leu e-mail se o Zoho nao estiver configurado.`,
     maxTokens: 550,
   },
   {
@@ -215,7 +215,7 @@ Dono: Lia/Marta/Nara.`,
   {
     agent: AGENTS.marta,
     channel: CHANNELS.vendas,
-    prompt: `Gere snapshot do pipeline somente com dados reais. Se não houver base conectada, diga que pipeline não está confiável ainda e acione Nara para organizar WhatsApp comercial + planilha.
+    prompt: `Gere snapshot do pipeline somente com dados confirmados. Se não houver base conectada, diga que pipeline não está confiável ainda e acione Nara para organizar WhatsApp comercial + planilha.
 Nunca use [Nome Lead A] nem números inventados.
 Formato:
 Fato: [confirmado ou lacuna]
@@ -269,7 +269,7 @@ Instrução para Alex: formato visual, referência objetiva`,
     {
       agent: AGENTS.lens,
       channel: CHANNELS.gestao,
-      prompt: `Analise métricas de abertura de semana apenas se houver dados reais. Se não houver acesso, não peça print para Talita: acione Nara para organizar Instagram/Meta/funil.
+      prompt: `Analise métricas de abertura de semana apenas se houver dados confirmados. Se não houver acesso, não peça print para Talita: acione Nara para organizar Instagram/Meta/funil.
 Formato: Fato / Lacuna / Ação com dono. Máximo 90 palavras.`,
       maxTokens: 450,
     },
@@ -312,7 +312,7 @@ Se algum contrato de renovação continuar pendente (Eli+Aparicio, Thaissa): cob
     {
       agent: AGENTS.lens,
       channel: CHANNELS.gestao,
-      prompt: `Feche a semana com métricas apenas se houver dados reais. Se faltar acesso, acione Nara e diga a lacuna. Formato: Fato / Risco / Ação. Máximo 90 palavras.`,
+      prompt: `Feche a semana com métricas apenas se houver dados confirmados. Se faltar acesso, acione Nara e diga a lacuna. Formato: Fato / Risco / Ação. Máximo 90 palavras.`,
       maxTokens: 400,
     },
   ],
@@ -332,7 +332,7 @@ const STORIES_WEEK = {
   1: { tema: 'Backstory — o problema concreto, sem resolver', pilar: 'Extração do que já existe', angulo: 'diagnóstico direto', gancho: 'amanhã conto o que muda quando você para de adicionar' },
   2: { tema: 'A parede — o momento em que parou de funcionar', pilar: 'Estrutura que liberta', angulo: 'bastidores reais', gancho: 'a resposta que mudou tudo — amanhã' },
   3: { tema: 'A epifania — o que muda quando você vê diferente', pilar: 'Extração do que já existe', angulo: 'a vara de Moisés', gancho: 'me responde qual é a sua alavanca mais fraca' },
-  4: { tema: 'Prova real — quem já viveu isso com profundidade', pilar: 'Preeminência', angulo: 'prova com profundidade', gancho: 'quer entender o que foi feito? me responde aqui' },
+  4: { tema: 'Prova concreta — quem já viveu isso com profundidade', pilar: 'Preeminência', angulo: 'prova com profundidade', gancho: 'quer entender o que foi feito? me responde aqui' },
   5: { tema: 'Oferta natural — o próximo passo para quem se reconheceu', pilar: 'A Tribus', angulo: 'oferta depois da jornada', gancho: 'me manda DM com "diagnóstico" e te conto mais' },
   6: { tema: 'Bastidores — processo com decisões reais, sem resultado pronto', pilar: 'Qualquer', angulo: 'document, don\'t create', gancho: '' },
 };
@@ -481,7 +481,7 @@ ${sequenciaFinal}
 Revise frame por frame verificando:
 1. O Frame 1 passa no teste do hook? ("Uma coach genérica poderia assinar isso?" — se sim, reprovar)
 2. A sequência segue o tema e ângulo que você definiu?
-3. Tem alguma palavra proibida (real, presença, jornada, transformação, audiência, engajar, etc)?
+3. Tem alguma palavra proibida (presença, jornada, transformação, audiência, engajar, etc)?
 4. O sticker interativo está nos frames 2–3?
 5. O CTA está no penúltimo frame?
 6. O gancho de fechamento está correto: "${dayInfo.gancho}"
