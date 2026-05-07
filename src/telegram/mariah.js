@@ -5,6 +5,7 @@ const { callClaude } = require('../claude');
 const { processMariahCalendar } = require('../handlers/mariah');
 const { readMemory, appendMemory } = require('../memory/index');
 const { getPrivateContextForAgent } = require('../privateContext');
+const { listarEmailsManha, isEmailConfigured } = require('./services/email');
 
 const TELEGRAM_API = 'https://api.telegram.org';
 
@@ -98,7 +99,7 @@ async function sendTelegramVoice(chatId, audioBuffer) {
 }
 
 async function textToSpeech(text) {
-  const googleKey = process.env.GOOGLE_API_KEY;
+  const googleKey = process.env.GOOGLE_CLOUD_API_KEY || process.env.GOOGLE_API_KEY;
   const spokenText = text
     .replace(/\*\*(.*?)\*\*/g, '$1')
     .replace(/\*(.*?)\*/g, '$1')
@@ -142,18 +143,19 @@ function shouldRespondWithVoice(userText, sourceIsVoice) {
     'fala pra mim', 'me manda audio', 'resposta em audio',
     'audio por favor', 'em voz', 'me fala'
   ];
-  if (voiceRequests.some(function(t) { return lower.includes(t); })) return true;
+  if (voiceRequests.some(t => lower.includes(t))) return true;
   const textTriggers = [
     'lista', 'checklist', 'tarefas', 'pendencias', 'agenda',
-    'reuniao', 'horario', 'relatorio', 'dados', 'numeros'
+    'reuniao', 'horario', 'relatorio', 'dados', 'numeros',
+    'email', 'e-mail', 'inbox', 'caixa'
   ];
-  if (textTriggers.some(function(t) { return lower.includes(t); })) return false;
+  if (textTriggers.some(t => lower.includes(t))) return false;
   const voiceTriggers = [
     'como voce esta', 'to bem', 'cansada', 'animada',
     'preocupada', 'feliz', 'triste', 'preciso conversar',
     'me ajuda', 'o que voce acha', 'sua opiniao'
   ];
-  if (voiceTriggers.some(function(t) { return lower.includes(t); })) return true;
+  if (voiceTriggers.some(t => lower.includes(t))) return true;
   return false;
 }
 
@@ -165,8 +167,8 @@ async function buildMariahSystem() {
     'Telegram e porta de entrada rapida: mensagem curta, audio, ideia solta, comando pessoal, rotina e organizacao.',
     'Se faltar dado/base/acesso, acione Nara ou diga qual acesso falta. Nao devolva bagunca para Talita.',
     'Formato preferido: Entendi / Vou organizar assim / Depende de voce apenas se houver uma decisao sua.',
-    'Quando precisar de mais contexto para agir, pergunte de forma direta e natural.','IMPORTANTE: Voce PODE enviar mensagens de voz. Quando a Talita pedir audio ou voz, o sistema converte sua resposta automaticamente. Nao diga que nao consegue enviar audio.',
-
+    'Quando precisar de mais contexto para agir, pergunte de forma direta e natural.',
+    'IMPORTANTE: Voce TEM acesso ao email da Talita via Zoho Mail API. Quando ela pedir emails, inbox ou caixa de entrada, os emails ja foram buscados e estao no contexto da mensagem.',
     '',
     agent.system,
   ].join('\n');
@@ -186,9 +188,23 @@ async function buildMariahSystem() {
 }
 
 async function processMariahText(userText, source) {
+  const lowerText = userText.toLowerCase();
+  const emailTriggers = ['email', 'e-mail', 'caixa', 'inbox', 'mensagens do email', 'correio', 'zoho', 'listar email', 'ver email', 'meus emails'];
+  const pedindoEmail = emailTriggers.some(t => lowerText.includes(t));
+
+  if (pedindoEmail && isEmailConfigured()) {
+    try {
+      const emails = await listarEmailsManha({ limit: 12, hours: 24 });
+      return formatForTelegram(`📬 E-mails recentes:\n\n${emails}`);
+    } catch (err) {
+      return formatForTelegram('Erro ao buscar e-mails. Tente novamente.');
+    }
+  }
+
   const system = await buildMariahSystem();
   const calendarResponse = await processMariahCalendar(userText, system);
   const response = formatForTelegram(calendarResponse || await callClaude(system, userText, 600));
+
   appendMemory(
     AGENTS.assistente.key,
     [
@@ -197,7 +213,8 @@ async function processMariahText(userText, source) {
       'Mensagem da Talita: ' + userText.slice(0, 600),
       'Resposta da Mariah: ' + response.slice(0, 600),
     ].join('\n')
-  ).catch(function() {});
+  ).catch(() => {});
+
   return response;
 }
 
