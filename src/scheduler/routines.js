@@ -5,6 +5,7 @@ const { refreshAll, getPautas } = require('../curadoria/crawler');
 const { getPendingFor, cleanup } = require('../queue/index');
 const { getPrivateContextForAgent } = require('../privateContext');
 const { listarEventos } = require('../services/calendar');
+const { listarEmailsManha } = require('../services/email');
 
 // IDs dos canais do Slack
 const CHANNELS = {
@@ -132,20 +133,48 @@ async function buildMariahMorningAgendaContext(logger = console) {
   }
 }
 
+async function buildMariahMorningInboxContext(logger = console) {
+  try {
+    const emails = await listarEmailsManha({ limit: 12, hours: 14 });
+    return [
+      'E-MAILS DA MANHA — FONTE: Zoho Mail/IMAP.',
+      emails,
+      '',
+      'REGRAS PARA MARIAH:',
+      '- Nao despeje e-mail inteiro no Slack.',
+      '- Classifique em financeiro, comercial, suporte/risco, triagem ou baixo impacto.',
+      '- Leve para Talita apenas decisao real, risco ou oportunidade.',
+      '- Se Zoho nao estiver configurado, registre como acesso pendente. Nao finja que leu.',
+    ].join('\n');
+  } catch (err) {
+    logger.warn?.('Zoho Mail indisponivel no briefing:', err.message);
+    return [
+      'E-MAILS DA MANHA — ERRO AO CONSULTAR ZOHO MAIL.',
+      `Erro: ${err.message}`,
+      '',
+      'REGRAS PARA MARIAH:',
+      '- Nao invente e-mails.',
+      '- Diga que o acesso falhou e acione Nara para diagnosticar.',
+    ].join('\n');
+  }
+}
+
 // Rotinas diárias — rodam todo dia às 8h BRT
 const DAILY_ROUTINES = [
   {
     agent: AGENTS.assistente,
     channel: CHANNELS.talita,
-    prompt: `Gere o resumo da manhã para Talita usando obrigatoriamente o bloco AGENDA REAL DE HOJE que vem abaixo. Use a data atual do sistema. Não peça a data. Não use lembretes antigos de Brenda/Carol se não estiverem no contexto atual.
-Regra central: Google Calendar ao vivo e a fonte da verdade. Não use rotina fixa como fato.
+    prompt: `Gere o resumo da manhã para Talita usando obrigatoriamente os blocos AGENDA REAL DE HOJE e E-MAILS DA MANHA que vêm abaixo. Use a data atual do sistema. Não peça a data. Não use lembretes antigos de Brenda/Carol se não estiverem no contexto atual.
+Regra central: Google Calendar ao vivo e Zoho Mail sao fontes da verdade. Não use rotina fixa como fato.
 Formato:
 Leitura: 1 frase sobre o dia citando os blocos reais.
 Agenda real: liste os principais compromissos reais em linhas curtas.
+Inbox: e-mails importantes da noite/manha, agrupados por decisao, risco ou oportunidade. Se Zoho nao estiver configurado, diga acesso pendente em 1 linha.
 Proteção: qual bloco real precisa ser protegido.
-Decisão: só o que depende de Talita hoje. Se não houver dado, acione Nara para levantar, sem pedir para Talita organizar.
-Proibido: dizer agenda livre, treino fixo, aula fixa ou dia protegido se isso não aparecer no bloco AGENDA REAL DE HOJE.`,
-    maxTokens: 400,
+Decisão: só o que depende de Talita hoje.
+Eu ja vou: o que Mariah/Nara/agente dono vai resolver sem devolver para Talita.
+Proibido: dizer agenda livre, treino fixo, aula fixa ou dia protegido se isso não aparecer no bloco AGENDA REAL DE HOJE. Proibido fingir que leu e-mail se o Zoho nao estiver configurado.`,
+    maxTokens: 550,
   },
   {
     agent: AGENTS.nara,
@@ -557,7 +586,8 @@ async function runRoutine(routine, slackClient, logger) {
 
     if (agent.key === AGENTS.assistente.key) {
       const agendaContext = await buildMariahMorningAgendaContext(logger);
-      routinePrompt = `${prompt}\n\n${agendaContext}`;
+      const inboxContext = await buildMariahMorningInboxContext(logger);
+      routinePrompt = `${prompt}\n\n${agendaContext}\n\n${inboxContext}`;
     }
 
     const text = formatForSlack(await callClaude(system, routinePrompt, maxTokens));
