@@ -25,6 +25,77 @@ function getBrtNow() {
   }).format(new Date());
 }
 
+function getBrtDateParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+
+  return {
+    year: Number(parts.find(part => part.type === 'year').value),
+    month: Number(parts.find(part => part.type === 'month').value),
+    day: Number(parts.find(part => part.type === 'day').value),
+  };
+}
+
+function addDaysBrt(parts, days) {
+  const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day + days, 12, 0, 0));
+  return getBrtDateParts(date);
+}
+
+function brtDateTime(parts, hour, minute = 0) {
+  const yyyy = String(parts.year).padStart(4, '0');
+  const mm = String(parts.month).padStart(2, '0');
+  const dd = String(parts.day).padStart(2, '0');
+  const hh = String(hour).padStart(2, '0');
+  const mi = String(minute).padStart(2, '0');
+  return new Date(`${yyyy}-${mm}-${dd}T${hh}:${mi}:00-03:00`);
+}
+
+function getDirectListRange(text) {
+  const lower = text.toLowerCase();
+  const isWriteAction = ['agendar', 'marcar', 'remarcar', 'cancelar', 'cancela', 'desmarcar', 'desmarca']
+    .some(word => lower.includes(word));
+  if (isWriteAction) return null;
+
+  const asksAgenda = ['agenda', 'compromisso', 'compromissos', 'horário', 'horario', 'livre', 'ocupada', 'ocupado']
+    .some(word => lower.includes(word));
+  if (!asksAgenda) return null;
+
+  const today = getBrtDateParts();
+  let target = today;
+  let label = 'hoje';
+
+  if (lower.includes('amanhã') || lower.includes('amanha')) {
+    target = addDaysBrt(today, 1);
+    label = 'amanhã';
+  } else if (!lower.includes('hoje')) {
+    return null;
+  }
+
+  let inicio = brtDateTime(target, 0);
+  let fim = brtDateTime(addDaysBrt(target, 1), 0);
+  let periodo = 'o dia todo';
+
+  if (lower.includes('manhã') || lower.includes('manha')) {
+    inicio = brtDateTime(target, 6);
+    fim = brtDateTime(target, 12);
+    periodo = 'pela manhã';
+  } else if (lower.includes('tarde')) {
+    inicio = brtDateTime(target, 12);
+    fim = brtDateTime(target, 18);
+    periodo = 'à tarde';
+  } else if (lower.includes('noite')) {
+    inicio = brtDateTime(target, 18);
+    fim = brtDateTime(addDaysBrt(target, 1), 0);
+    periodo = 'à noite';
+  }
+
+  return { inicio, fim, label, periodo };
+}
+
 // System prompt especial que faz a Mariah retornar JSON estruturado para ações de agenda
 function getMariahCalendarSystem() {
   return `Você é Mariah, secretária pessoal da Talita. Analise a mensagem e retorne APENAS um JSON válido (sem markdown, sem texto extra).
@@ -82,6 +153,12 @@ async function processMariahCalendar(userMessage, systemPrompt) {
   if (!process.env.GOOGLE_REFRESH_TOKEN) return null;
 
   try {
+    const directRange = getDirectListRange(userMessage);
+    if (directRange) {
+      const calendarResult = await listarEventos(directRange.inicio, directRange.fim);
+      return `Vou verificar sua agenda de ${directRange.label}, ${directRange.periodo}.\n\n*Agenda:*\n${calendarResult}`;
+    }
+
     // Pede à Mariah para estruturar a ação em JSON
     const raw = await callClaude(getMariahCalendarSystem(), userMessage, 600);
 
