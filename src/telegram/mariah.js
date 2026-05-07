@@ -182,6 +182,7 @@ function isAllowedChat(chatId) {
 
 async function transcribeVoice(fileId, logger = console) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
+  const googleKey = process.env.GOOGLE_API_KEY;
 
   const fileRes = await fetch(`${TELEGRAM_API}/bot${token}/getFile?file_id=${fileId}`);
   const fileData = await fileRes.json();
@@ -189,19 +190,35 @@ async function transcribeVoice(fileId, logger = console) {
 
   const audioRes = await fetch(`${TELEGRAM_API}/file/bot${token}/${filePath}`);
   const audioBuffer = Buffer.from(await audioRes.arrayBuffer());
+  const audioBase64 = audioBuffer.toString('base64');
 
-  const { GoogleGenAI } = await import('@google/genai');
-  const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
-
-  const result = await ai.models.generateContent({
-    model: 'gemini-1.5-flash',
+  const body = {
     contents: [
-      { inlineData: { mimeType: 'audio/ogg', data: audioBuffer.toString('base64') } },
-      { text: 'Transcreva este áudio em português.' },
-    ],
-  });
+      {
+        parts: [
+          { inline_data: { mime_type: 'audio/ogg', data: audioBase64 } },
+          { text: 'Transcreva este áudio em português.' }
+        ]
+      }
+    ]
+  };
 
-  return result.text || '';
+  const geminiRes = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${googleKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }
+  );
+
+  const geminiData = await geminiRes.json();
+
+  if (!geminiRes.ok) {
+    throw new Error(`got status: ${geminiRes.status} . ${JSON.stringify(geminiData)}`);
+  }
+
+  return geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 
 async function handleTelegramUpdate(update, logger = console) {
