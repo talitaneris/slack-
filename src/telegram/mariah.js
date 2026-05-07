@@ -136,6 +136,7 @@ async function textToSpeech(text) {
     throw new Error(`TTS falhou: ${JSON.stringify(data).slice(0, 200)}`);
   }
 
-  return Buffer.from(data.audioContent, 'base64');​​​​​​​​​​​​​​​​
+  return Buffer.from(data.audioContent, 'base64');
+​​​​​​​​​​​​​​​​
 
 
