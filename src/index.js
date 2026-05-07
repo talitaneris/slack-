@@ -10,6 +10,7 @@ require('dotenv').config();
   const { registerWebhooks } = require('./webhooks/index');                                                      
   const { registerTelegramMariah, setTelegramWebhook } = require('./telegram/mariah');
   const { registerGoogleOAuth } = require('./google/oauth');
+  const { registerZoomWebhook } = require('./webhooks/zoom');
    
   // Validação das variáveis de ambiente obrigatórias                                                            
   const REQUIRED_ENV = ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET', 'ANTHROPIC_API_KEY'];
@@ -89,9 +90,10 @@ receiver.router.get('/sistemadeconteudo', (req, res) => {
   });                                                                                                            
    
   // Registra os endpoints de webhook no receiver Express                                                        
-  registerWebhooks(receiver, app.client, console);          
+  registerWebhooks(receiver, app.client, console);
   registerTelegramMariah(receiver, console);
   registerGoogleOAuth(receiver, console);
+  registerZoomWebhook(receiver, console);
 
   // Keep-alive: pinga o próprio serviço a cada 14 min para não hibernar no Render free                          
   function startKeepAlive(hostname) {

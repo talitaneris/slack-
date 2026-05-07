@@ -5,7 +5,8 @@ const { callClaude } = require('../claude');
 const { processMariahCalendar } = require('../handlers/mariah');
 const { readMemory, appendMemory } = require('../memory/index');
 const { getPrivateContextForAgent } = require('../privateContext');
-const { listarEmailsManha, isEmailConfigured } = require('../services/email');
+const { listarEmailsManha, isEmailConfigured, enviarEmail } = require('../services/email');
+const { criarReuniaoZoom, isZoomConfigured } = require('../services/zoom');
 
 const TELEGRAM_API = 'https://api.telegram.org';
 
@@ -187,6 +188,14 @@ async function buildMariahSystem() {
   return system;
 }
 
+function isZoomRequest(text) {
+  const lower = text.toLowerCase();
+  if (lower.includes('zoom')) return true;
+  if (lower.includes('link') && (lower.includes('reuniao') || lower.includes('reunião') || lower.includes('meeting'))) return true;
+  if ((lower.includes('criar') || lower.includes('gera') || lower.includes('abre')) && (lower.includes('reuniao') || lower.includes('reunião') || lower.includes('meeting'))) return true;
+  return false;
+}
+
 async function processMariahText(userText, source) {
   const lowerText = userText.toLowerCase();
   const emailTriggers = ['email', 'e-mail', 'caixa', 'inbox', 'mensagens do email', 'correio', 'zoho', 'listar email', 'ver email', 'meus emails'];
@@ -201,6 +210,33 @@ async function processMariahText(userText, source) {
       return formatForTelegram(response);
     } catch (err) {
       return formatForTelegram('Erro ao buscar e-mails. Tente novamente.');
+    }
+  }
+
+  if (isZoomRequest(userText) && isZoomConfigured()) {
+    try {
+      const meeting = await criarReuniaoZoom({ topic: 'Reunião' });
+      let reply = `🎥 *Zoom criado!*\n\n🔗 ${meeting.joinUrl}\n🔑 Senha: ${meeting.password || 'sem senha'}\n📋 ID: \`${meeting.meetingId}\``;
+
+      const emailMatch = userText.match(/[\w.+]+@[\w.]+\.\w+/);
+      if (emailMatch && isEmailConfigured()) {
+        try {
+          await enviarEmail({
+            to: emailMatch[0],
+            subject: 'Link da sua reunião',
+            body: `Aqui está o link da sua reunião:\n\n${meeting.joinUrl}\nSenha: ${meeting.password || 'sem senha'}`,
+          });
+          reply += `\n\n📧 Link enviado para ${emailMatch[0]}`;
+        } catch (err) {
+          reply += `\n\n⚠️ E-mail não enviado: ${err.message}`;
+        }
+      } else if (emailMatch) {
+        reply += '\n\n_Adicione ZOHO_OAUTH* no Render para envio de e-mail._';
+      }
+
+      return formatForTelegram(reply);
+    } catch (err) {
+      return formatForTelegram(`Erro ao criar reunião Zoom: ${err.message}`);
     }
   }
 
@@ -393,5 +429,5 @@ function registerTelegramMariah(receiver, logger) {
   logger.info('Telegram Mariah registrado: /telegram/webhook | /telegram/status | /mariah/shortcut');
 }
 
-module.exports = { registerTelegramMariah, handleTelegramUpdate, setTelegramWebhook };
+module.exports = { registerTelegramMariah, handleTelegramUpdate, setTelegramWebhook, sendTelegramMessage };
 

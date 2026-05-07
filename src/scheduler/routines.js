@@ -6,6 +6,8 @@ const { getPendingFor, cleanup } = require('../queue/index');
 const { getPrivateContextForAgent } = require('../privateContext');
 const { listarEventos } = require('../services/calendar');
 const { listarEmailsManha } = require('../services/email');
+const { criarReuniaoZoom, isZoomConfigured } = require('../services/zoom');
+const { sendTelegramMessage } = require('../telegram/mariah');
 
 // IDs dos canais do Slack
 const CHANNELS = {
@@ -721,6 +723,42 @@ Feche com:
     }
   }, { timezone: 'America/Sao_Paulo' });
 
+  // ── 18h45 toda segunda — cria link Zoom para A Tribus (19h) e manda no Telegram ──
+  cron.schedule('45 18 * * 1', async () => {
+    logger.info('🎥 Cron 18h45 segunda — criando link Zoom para A Tribus');
+
+    if (!isZoomConfigured()) {
+      logger.warn('[zoom] Zoom não configurado — pulando criação de link para A Tribus');
+      return;
+    }
+
+    try {
+      const now = new Date();
+      const dataBrt = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+      }).format(now);
+
+      const meeting = await criarReuniaoZoom({
+        topic: 'A Tribus — Mentoria',
+        startTime: `${dataBrt}T19:00:00`,
+        duration: 90,
+        agenda: 'Reunião semanal A Tribus',
+      });
+
+      const msg = `🎥 *Link Zoom — A Tribus de hoje*\n\n🔗 ${meeting.joinUrl}\n🔑 Senha: ${meeting.password || 'sem senha'}\n📋 ID: \`${meeting.meetingId}\`\n\n_Reunião às 19h. Boa mentoria! 💜_`;
+
+      const chatId = process.env.TELEGRAM_ALLOWED_CHAT_ID;
+      if (chatId && process.env.TELEGRAM_BOT_TOKEN) {
+        await sendTelegramMessage(chatId, msg);
+      }
+
+      logger.info('✅ Link Zoom A Tribus criado e enviado para Talita');
+    } catch (err) {
+      logger.error('❌ Erro ao criar Zoom para A Tribus:', err.message);
+    }
+  }, { timezone: 'America/Sao_Paulo' });
+
   // ── Meia-noite BRT diário — limpeza da fila inter-agente ──
   cron.schedule('0 0 * * *', () => {
     try {
@@ -733,7 +771,7 @@ Feche com:
     }
   }, { timezone: 'America/Sao_Paulo' });
 
-  logger.info('🗓️ Scheduler iniciado — 6h curadoria+pautas | 6h30 briefing | 8h rotinas+stories | 9h30 seg conselho | 18h métricas | 0h cleanup');
+  logger.info('🗓️ Scheduler iniciado — 6h curadoria+pautas | 6h30 briefing | 8h rotinas+stories | 9h30 seg conselho | 18h métricas | 18h45 seg zoom-tribus | 0h cleanup');
 }
 
 module.exports = { initScheduler, runStoriesApprovalRoutine };

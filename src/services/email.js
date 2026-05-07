@@ -243,7 +243,43 @@ async function listarEmailsManha({ limit = 12, hours = 14 } = {}) {
   }
 }
 
+async function enviarEmail({ to, subject, body: bodyText }) {
+  if (!isEmailConfigured()) throw new Error('Zoho Mail não configurado');
+
+  const accessToken = await refreshAccessToken();
+  const { account, accountId } = await getAccountAndInbox(accessToken);
+
+  const fromAddress =
+    account.mailboxAddress ||
+    account.emailAddress ||
+    account.primaryEmailAddress ||
+    cleanEnv(process.env.ZOHO_MAIL_ACCOUNT_ADDRESS);
+
+  const response = await fetch(`${MAIL_BASE}/api/accounts/${accountId}/messages`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Zoho-oauthtoken ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      fromAddress,
+      toAddress: to,
+      subject,
+      content: bodyText,
+      mailFormat: 'plaintext',
+    }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || data.error || `Zoho send ${response.status}`);
+  }
+
+  return data;
+}
+
 module.exports = {
   listarEmailsManha,
   isEmailConfigured,
+  enviarEmail,
 };
