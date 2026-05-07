@@ -36,6 +36,9 @@ async function criarReuniaoZoom({ topic = 'Reunião', startTime, duration = 60, 
 
   const token = await getZoomAccessToken();
 
+  // Com S2S OAuth, /users/me não funciona — usa o e-mail da conta host
+  const userId = process.env.ZOOM_USER_EMAIL || 'me';
+
   const body = {
     topic,
     type: startTime ? 2 : 1, // 1 = instantânea, 2 = agendada
@@ -54,7 +57,7 @@ async function criarReuniaoZoom({ topic = 'Reunião', startTime, duration = 60, 
     body.timezone = 'America/Sao_Paulo';
   }
 
-  const response = await fetch('https://api.zoom.us/v2/users/me/meetings', {
+  const response = await fetch(`https://api.zoom.us/v2/users/${userId}/meetings`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
