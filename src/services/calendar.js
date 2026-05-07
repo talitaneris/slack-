@@ -13,17 +13,21 @@
 
 const { google } = require('googleapis');
 
-const CALENDAR_ID = process.env.GOOGLE_CALENDAR_ID || 'primary';
-const WRITE_CALENDAR_ID = process.env.GOOGLE_CALENDAR_WRITE_ID || 'primary';
+function cleanEnv(value, fallback = '') {
+  return String(value || fallback).trim();
+}
+
+const CALENDAR_ID = cleanEnv(process.env.GOOGLE_CALENDAR_ID, 'primary').toLowerCase();
+const WRITE_CALENDAR_ID = cleanEnv(process.env.GOOGLE_CALENDAR_WRITE_ID, 'primary');
 
 const CALENDAR_ROUTES = {
-  saude: process.env.GOOGLE_CALENDAR_SAUDE_ID || '4ff3b2194e9642783c6016eba59b647f776e8eac63b29488b11f923f75365da9@group.calendar.google.com',
-  conteudo: process.env.GOOGLE_CALENDAR_CONTEUDO_ID || '015965a5a3092b4add5977257ab433f1d8df831a2ce97e2744ce1c1f8913cd17@group.calendar.google.com',
-  mentoria: process.env.GOOGLE_CALENDAR_MENTORIA_ID || '548525d3ec1b96916132377efae9bb5fa65918b31aa4bd80d7342581e9ea64d9@group.calendar.google.com',
-  pessoal: process.env.GOOGLE_CALENDAR_PESSOAL_ID || '829be334ad2a458e0e663871311a4a31030203de45d5681a048be138869a43b0@group.calendar.google.com',
-  vendas: process.env.GOOGLE_CALENDAR_VENDAS_ID || '59052868f8deb11a8058f5fedc0e303b9057fa30ff753b7f69954ed90083fece@group.calendar.google.com',
-  casa: process.env.GOOGLE_CALENDAR_CASA_ID || '2bd6305fef2d15792b0dfab81bbb3740c5ab34e6901812148ffd5a6d96a821dc@group.calendar.google.com',
-  principal: process.env.GOOGLE_CALENDAR_PRINCIPAL_ID || 'contato@talitaneris.com.br',
+  saude: cleanEnv(process.env.GOOGLE_CALENDAR_SAUDE_ID, '4ff3b2194e9642783c6016eba59b647f776e8eac63b29488b11f923f75365da9@group.calendar.google.com'),
+  conteudo: cleanEnv(process.env.GOOGLE_CALENDAR_CONTEUDO_ID, '015965a5a3092b4add5977257ab433f1d8df831a2ce97e2744ce1c1f8913cd17@group.calendar.google.com'),
+  mentoria: cleanEnv(process.env.GOOGLE_CALENDAR_MENTORIA_ID, '548525d3ec1b96916132377efae9bb5fa65918b31aa4bd80d7342581e9ea64d9@group.calendar.google.com'),
+  pessoal: cleanEnv(process.env.GOOGLE_CALENDAR_PESSOAL_ID, '829be334ad2a458e0e663871311a4a31030203de45d5681a048be138869a43b0@group.calendar.google.com'),
+  vendas: cleanEnv(process.env.GOOGLE_CALENDAR_VENDAS_ID, '59052868f8deb11a8058f5fedc0e303b9057fa30ff753b7f69954ed90083fece@group.calendar.google.com'),
+  casa: cleanEnv(process.env.GOOGLE_CALENDAR_CASA_ID, '2bd6305fef2d15792b0dfab81bbb3740c5ab34e6901812148ffd5a6d96a821dc@group.calendar.google.com'),
+  principal: cleanEnv(process.env.GOOGLE_CALENDAR_PRINCIPAL_ID, 'contato@talitaneris.com.br'),
 };
 
 function normalizeText(text = '') {
