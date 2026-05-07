@@ -102,10 +102,10 @@ async function textToSpeech(text) {
   const body = {
     input: { text: text.slice(0, 4000) },
     voice: {
-      languageCode: 'pt-BR',
-      name: 'pt-BR-Wavenet-A',
-      ssmlGender: 'FEMALE',
-    },
+  languageCode: 'pt-BR',
+  name: 'pt-BR-Neural2-C',
+  ssmlGender: 'FEMALE',
+},
     audioConfig: {
       audioEncoding: 'OGG_OPUS',
     },
