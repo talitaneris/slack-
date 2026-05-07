@@ -133,7 +133,7 @@ async function processMariahCalendar(userMessage, systemPrompt) {
 
     // Monta resposta final
     const textoFinal = calendarResult
-      ? `${resposta}\n\n📅 *Agenda:*\n${calendarResult}`
+      ? `${resposta}\n\n*Agenda:*\n${calendarResult}`
       : resposta;
 
     return textoFinal;

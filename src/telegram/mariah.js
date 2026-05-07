@@ -2,6 +2,7 @@
 
 const { AGENTS } = require('../agents');
 const { callClaude } = require('../claude');
+const { processMariahCalendar } = require('../handlers/mariah');
 const { readMemory, appendMemory } = require('../memory/index');
 const { getPrivateContextForAgent } = require('../privateContext');
 
@@ -191,7 +192,8 @@ async function handleTelegramUpdate(update, logger = console) {
   if (!userText) return;
 
   const system = await buildMariahSystem();
-  const response = formatForTelegram(await callClaude(system, userText, 600));
+  const calendarResponse = await processMariahCalendar(userText, system);
+  const response = formatForTelegram(calendarResponse || await callClaude(system, userText, 600));
 
   await sendTelegramMessage(msg.chatId, response);
 
