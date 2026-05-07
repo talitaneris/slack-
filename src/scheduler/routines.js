@@ -4,6 +4,7 @@ const { AGENTS } = require('../agents');
 const { refreshAll, getPautas } = require('../curadoria/crawler');
 const { getPendingFor, cleanup } = require('../queue/index');
 const { getPrivateContextForAgent } = require('../privateContext');
+const { listarEventos } = require('../services/calendar');
 
 // IDs dos canais do Slack
 const CHANNELS = {
@@ -32,6 +33,31 @@ function getBrtDateContext() {
   }).format(now);
 
   return `Agora em America/Sao_Paulo: ${brt}. Use esta data. Não use data antiga, placeholder ou exemplo como fato.`;
+}
+
+function getBrtDateParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+
+  const value = type => parts.find(part => part.type === type)?.value;
+  return {
+    year: value('year'),
+    month: value('month'),
+    day: value('day'),
+  };
+}
+
+function getBrtTodayRange() {
+  const { year, month, day } = getBrtDateParts();
+  return {
+    start: new Date(`${year}-${month}-${day}T00:00:00-03:00`),
+    end: new Date(`${year}-${month}-${day}T23:59:59-03:00`),
+    label: `${day}/${month}/${year}`,
+  };
 }
 
 const SCHEDULER_LAYOUT_RULE = `
@@ -77,16 +103,48 @@ async function buildRoutineSystem(agent) {
   return system;
 }
 
+async function buildMariahMorningAgendaContext(logger = console) {
+  const { start, end, label } = getBrtTodayRange();
+
+  try {
+    const agenda = await listarEventos(start, end);
+    return [
+      `AGENDA REAL DE HOJE (${label}) — FONTE: Google Calendar ao vivo.`,
+      agenda,
+      '',
+      'REGRAS PARA MARIAH:',
+      '- Esta agenda real vence qualquer rotina fixa, memoria antiga ou suposicao.',
+      '- Nao diga que o dia esta livre se houver eventos acima.',
+      '- Nao invente treino 8h30, aula 19h, folga ou dia protegido se nao estiver na agenda real.',
+      '- Se a agenda vier com erro tecnico, diga que nao conseguiu consultar e acione Nara. Nao invente.',
+      '- No briefing, cite os principais blocos reais do dia e a protecao concreta de tempo.',
+    ].join('\n');
+  } catch (err) {
+    logger.warn?.('Agenda real da Mariah indisponivel no briefing:', err.message);
+    return [
+      `AGENDA REAL DE HOJE (${label}) — ERRO AO CONSULTAR GOOGLE CALENDAR.`,
+      `Erro: ${err.message}`,
+      '',
+      'REGRAS PARA MARIAH:',
+      '- Nao invente a agenda.',
+      '- Diga que a agenda ao vivo falhou e acione Nara para diagnosticar.',
+    ].join('\n');
+  }
+}
+
 // Rotinas diárias — rodam todo dia às 8h BRT
 const DAILY_ROUTINES = [
   {
     agent: AGENTS.assistente,
     channel: CHANNELS.talita,
-    prompt: `Gere o resumo da manhã para Talita. Use a data atual do sistema. Não peça a data. Não use lembretes antigos de Brenda/Carol se não estiverem no contexto atual.
+    prompt: `Gere o resumo da manhã para Talita usando obrigatoriamente o bloco AGENDA REAL DE HOJE que vem abaixo. Use a data atual do sistema. Não peça a data. Não use lembretes antigos de Brenda/Carol se não estiverem no contexto atual.
+Regra central: Google Calendar ao vivo e a fonte da verdade. Não use rotina fixa como fato.
 Formato:
-Leitura: 1 frase sobre o dia.
-Proteção: agenda/rotina que precisa ser protegida.
-Decisão: só o que depende de Talita hoje. Se não houver dado, acione Nara para levantar, sem pedir para Talita organizar.`,
+Leitura: 1 frase sobre o dia citando os blocos reais.
+Agenda real: liste os principais compromissos reais em linhas curtas.
+Proteção: qual bloco real precisa ser protegido.
+Decisão: só o que depende de Talita hoje. Se não houver dado, acione Nara para levantar, sem pedir para Talita organizar.
+Proibido: dizer agenda livre, treino fixo, aula fixa ou dia protegido se isso não aparecer no bloco AGENDA REAL DE HOJE.`,
     maxTokens: 400,
   },
   {
@@ -495,7 +553,14 @@ async function runRoutine(routine, slackClient, logger) {
     }
 
     const system = await buildRoutineSystem(agent);
-    const text = formatForSlack(await callClaude(system, prompt, maxTokens));
+    let routinePrompt = prompt;
+
+    if (agent.key === AGENTS.assistente.key) {
+      const agendaContext = await buildMariahMorningAgendaContext(logger);
+      routinePrompt = `${prompt}\n\n${agendaContext}`;
+    }
+
+    const text = formatForSlack(await callClaude(system, routinePrompt, maxTokens));
     await slackClient.chat.postMessage({
       channel,
       text: `*${agent.title}* — ${agent.role}\n${text}`,
