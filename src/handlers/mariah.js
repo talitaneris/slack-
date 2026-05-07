@@ -11,7 +11,7 @@
  */
 
 const { callClaude }    = require('../claude');
-const { listarEventos, criarEvento, deletarEvento, buscarEvento } = require('../services/calendar');
+const { listarEventos, listarAgendasDisponiveis, criarEvento, deletarEvento, buscarEvento } = require('../services/calendar');
 
 function getBrtNow() {
   return new Intl.DateTimeFormat('pt-BR', {
@@ -96,6 +96,20 @@ function getDirectListRange(text) {
   return { inicio, fim, label, periodo };
 }
 
+function isCalendarDiagnosticRequest(text) {
+  const lower = text.toLowerCase();
+  return (
+    lower.includes('quais agendas') ||
+    lower.includes('que agendas') ||
+    lower.includes('agendas voce enxerga') ||
+    lower.includes('agendas você enxerga') ||
+    lower.includes('o que voce esta vendo') ||
+    lower.includes('o que você está vendo') ||
+    lower.includes('o que voce ve') ||
+    lower.includes('o que você vê')
+  );
+}
+
 // System prompt especial que faz a Mariah retornar JSON estruturado para ações de agenda
 function getMariahCalendarSystem() {
   return `Você é Mariah, secretária pessoal da Talita. Analise a mensagem e retorne APENAS um JSON válido (sem markdown, sem texto extra).
@@ -153,6 +167,11 @@ async function processMariahCalendar(userMessage, systemPrompt) {
   if (!process.env.GOOGLE_REFRESH_TOKEN) return null;
 
   try {
+    if (isCalendarDiagnosticRequest(userMessage)) {
+      const agendas = await listarAgendasDisponiveis();
+      return `Estou vendo estas agendas na conta Google conectada:\n\n${agendas}\n\nSe a agenda que você esperava não aparecer aqui, ela está em outra conta Google ou não foi compartilhada com esta conta.`;
+    }
+
     const directRange = getDirectListRange(userMessage);
     if (directRange) {
       const calendarResult = await listarEventos(directRange.inicio, directRange.fim);

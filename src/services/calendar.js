@@ -121,6 +121,35 @@ async function listarEventos(inicio, fim) {
   }
 }
 
+async function listarAgendasDisponiveis() {
+  try {
+    const auth = getAuth();
+    if (!auth) return 'Google Calendar não configurado.';
+
+    const calendar = google.calendar({ version: 'v3', auth });
+    const res = await calendar.calendarList.list({
+      minAccessRole: 'reader',
+      showHidden: true,
+    });
+
+    const agendas = res.data.items || [];
+    if (agendas.length === 0) return 'Não encontrei nenhuma agenda acessível nessa conta Google.';
+
+    return agendas.map(item => {
+      const flags = [
+        item.primary ? 'principal' : '',
+        item.hidden ? 'oculta' : '',
+        item.accessRole ? `acesso: ${item.accessRole}` : '',
+      ].filter(Boolean).join(', ');
+
+      return `• ${item.summary || item.id}${flags ? ` (${flags})` : ''}\n  ID: ${item.id}`;
+    }).join('\n');
+  } catch (err) {
+    console.error('[calendar] Erro ao listar agendas:', err.message);
+    return `Erro ao listar agendas: ${err.message}`;
+  }
+}
+
 /**
  * Cria um evento na agenda.
  * @param {string} titulo   - Nome do evento
@@ -214,4 +243,4 @@ async function buscarEvento(termo, dias = 30) {
   }
 }
 
-module.exports = { listarEventos, criarEvento, deletarEvento, buscarEvento };
+module.exports = { listarEventos, listarAgendasDisponiveis, criarEvento, deletarEvento, buscarEvento };
