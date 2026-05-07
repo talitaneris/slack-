@@ -2,7 +2,10 @@
 
 const { google } = require('googleapis');
 
-const SCOPES = ['https://www.googleapis.com/auth/calendar'];
+const SCOPES = [
+  'https://www.googleapis.com/auth/calendar',
+  'https://www.googleapis.com/auth/youtube.upload',
+];
 
 function getRedirectUri(req) {
   if (process.env.GOOGLE_REDIRECT_URI) return process.env.GOOGLE_REDIRECT_URI;
@@ -96,11 +99,12 @@ function registerGoogleOAuth(receiver, logger = console) {
       }
 
       res.send(renderHtml(
-        'Agenda autorizada',
+        'Google autorizado — Calendar + YouTube',
         `<p>Copie estes valores para o Render:</p>
 <pre>GOOGLE_REFRESH_TOKEN=${tokens.refresh_token}
-GOOGLE_CALENDAR_ID=primary</pre>
-<p>Depois salve e faca redeploy.</p>`
+GOOGLE_CALENDAR_ID=primary
+YOUTUBE_REFRESH_TOKEN=${tokens.refresh_token}</pre>
+<p><strong>O mesmo token cobre Calendar e YouTube.</strong> Salve os três e faca redeploy.</p>`
       ));
     } catch (err) {
       logger.error('Erro no callback Google OAuth:', err.message);
