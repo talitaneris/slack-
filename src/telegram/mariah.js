@@ -195,7 +195,10 @@ async function processMariahText(userText, source) {
   if (pedindoEmail && isEmailConfigured()) {
     try {
       const emails = await listarEmailsManha({ limit: 12, hours: 24 });
-      return formatForTelegram(`📬 E-mails recentes:\n\n${emails}`);
+      const system = await buildMariahSystem();
+      const prompt = `Aqui estão os e-mails recentes da Talita:\n\n${emails}\n\nResuma de forma clara e humana, como uma assistente executiva faria. Destaque o que precisa de atenção urgente, o que é financeiro importante e o que pode ignorar. Seja direta e concisa.`;
+      const response = await callClaude(system, prompt, 600);
+      return formatForTelegram(response);
     } catch (err) {
       return formatForTelegram('Erro ao buscar e-mails. Tente novamente.');
     }
