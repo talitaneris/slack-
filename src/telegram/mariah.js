@@ -1,58 +1,157 @@
-async function shouldRespondWithVoice(userText, responseText, sourceIsVoice) {
+'use strict';
+
+const { AGENTS } = require('../agents');
+const { callClaude } = require('../claude');
+const { processMariahCalendar } = require('../handlers/mariah');
+const { readMemory, appendMemory } = require('../memory/index');
+const { getPrivateContextForAgent } = require('../privateContext');
+
+const TELEGRAM_API = 'https://api.telegram.org';
+
+function getBrtNow() {
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    weekday: 'long',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date());
+}
+
+function formatForTelegram(text) {
+  if (!text) return '';
+  return text
+    .replace(/^#{1,6}\s*/gm, '')
+    .replace(/\*\*([^*\n][^*\n]*?)\*\*/g, '*$1*')
+    .replace(/^\s*-{3,}\s*$/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+    .slice(0, 3800);
+}
+
+async function telegramRequest(method, payload) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) throw new Error('TELEGRAM_BOT_TOKEN ausente');
+  const response = await fetch(`${TELEGRAM_API}/bot${token}/${method}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`Telegram ${method} falhou: ${response.status} ${body.slice(0, 200)}`);
+  }
+  return response.json();
+}
+
+async function setTelegramWebhook(publicBaseUrl, logger) {
+  if (!logger) logger = console;
+  if (!process.env.TELEGRAM_BOT_TOKEN) {
+    logger.warn('Telegram webhook nao configurado: TELEGRAM_BOT_TOKEN ausente.');
+    return;
+  }
+  const baseUrl = (publicBaseUrl || '').replace(/\/+$/, '');
+  if (!baseUrl) {
+    logger.warn('Telegram webhook nao configurado: URL publica ausente.');
+    return;
+  }
+  const payload = {
+    url: `${baseUrl}/telegram/webhook`,
+    allowed_updates: ['message', 'edited_message'],
+  };
+  if (process.env.TELEGRAM_WEBHOOK_SECRET) {
+    payload.secret_token = process.env.TELEGRAM_WEBHOOK_SECRET;
+  }
+  try {
+    const result = await telegramRequest('setWebhook', payload);
+    logger.info(`Telegram webhook configurado: ${JSON.stringify(result).slice(0, 220)}`);
+  } catch (err) {
+    logger.error(`Erro ao configurar Telegram webhook: ${err.message}`);
+  }
+}
+
+async function sendTelegramMessage(chatId, text) {
+  return telegramRequest('sendMessage', {
+    chat_id: chatId,
+    text: formatForTelegram(text),
+    parse_mode: 'Markdown',
+    disable_web_page_preview: true,
+  });
+}
+
+async function sendTelegramVoice(chatId, audioBuffer) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const formData = new FormData();
+  formData.append('chat_id', String(chatId));
+  formData.append('voice', new Blob([audioBuffer], { type: 'audio/ogg; codecs=opus' }), 'voice.ogg');
+  const response = await fetch(`${TELEGRAM_API}/bot${token}/sendVoice`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`sendVoice falhou: ${response.status} ${body.slice(0, 200)}`);
+  }
+  return response.json();
+}
+
+async function textToSpeech(text) {
+  const googleKey = process.env.GOOGLE_API_KEY;
+  const body = {
+    input: { text: text.slice(0, 4000) },
+    voice: {
+      languageCode: 'pt-BR',
+      name: 'pt-BR-Wavenet-A',
+      ssmlGender: 'FEMALE',
+    },
+    audioConfig: {
+      audioEncoding: 'OGG_OPUS',
+    },
+  };
+  const response = await fetch(
+    `https://texttospeech.googleapis.com/v1/text:synthesize?key=${googleKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }
+  );
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(`TTS falhou: ${JSON.stringify(data).slice(0, 200)}`);
+  }
+  return Buffer.from(data.audioContent, 'base64');
+}
+
+function shouldRespondWithVoice(userText, sourceIsVoice) {
   if (sourceIsVoice) return true;
-
-  const lowerUser = userText.toLowerCase();
-
+  const lower = userText.toLowerCase();
   const voiceRequests = [
     'responde em audio', 'manda audio', 'quero ouvir',
     'fala pra mim', 'me manda audio', 'resposta em audio',
     'audio por favor', 'em voz', 'me fala'
   ];
-
-  const hasVoiceRequest = voiceRequests.some(t => lowerUser.includes(t));
-  if (hasVoiceRequest) return true;
-
+  if (voiceRequests.some(function(t) { return lower.includes(t); })) return true;
   const textTriggers = [
     'lista', 'checklist', 'tarefas', 'pendencias', 'agenda',
     'reuniao', 'horario', 'relatorio', 'dados', 'numeros'
   ];
-
-  const hasTextTrigger = textTriggers.some(t => lowerUser.includes(t));
-  if (hasTextTrigger) return false;
-
+  if (textTriggers.some(function(t) { return lower.includes(t); })) return false;
   const voiceTriggers = [
     'como voce esta', 'to bem', 'cansada', 'animada',
     'preocupada', 'feliz', 'triste', 'preciso conversar',
     'me ajuda', 'o que voce acha', 'sua opiniao'
   ];
-
-  const hasVoiceTrigger = voiceTriggers.some(t => lowerUser.includes(t));
-  if (hasVoiceTrigger) return true;
-
+  if (voiceTriggers.some(function(t) { return lower.includes(t); })) return true;
   return false;
-}
-async function processMariahText(userText, source) {
-  const system = await buildMariahSystem();
-  const calendarResponse = await processMariahCalendar(userText, system);
-  const response = formatForTelegram(calendarResponse || await callClaude(system, userText, 600));
-
-  appendMemory(
-    AGENTS.assistente.key,
-    [
-      `Fonte: ${source}`,
-      `Data: ${getBrtNow()}`,
-      `Mensagem da Talita: ${userText.slice(0, 600)}`,
-      `Resposta da Mariah: ${response.slice(0, 600)}`,
-    ].join('\n')
-  ).catch(() => {});
-
-  return response;
 }
 
 async function buildMariahSystem() {
   const agent = AGENTS.assistente;
   let system = [
-    `Agora em America/Sao_Paulo: ${getBrtNow()}.`,
+    'Agora em America/Sao_Paulo: ' + getBrtNow() + '.',
     'CANAL: Telegram. Responda como Mariah, agente executiva da Talita.',
     'Telegram e porta de entrada rapida: mensagem curta, audio, ideia solta, comando pessoal, rotina e organizacao.',
     'Se faltar dado/base/acesso, acione Nara ou diga qual acesso falta. Nao devolva bagunca para Talita.',
@@ -61,35 +160,45 @@ async function buildMariahSystem() {
     '',
     agent.system,
   ].join('\n');
-
   try {
     const privateContext = await getPrivateContextForAgent(agent.key);
     if (privateContext && privateContext.trim()) {
-      system = `${system}\n\n${privateContext}`;
+      system = system + '\n\n' + privateContext;
     }
   } catch (e) {}
-
   try {
     const memory = await readMemory(agent.key);
     if (memory && memory.trim()) {
-      system = `${system}\n\nMEMORIA RECENTE DA MARIAH:\n${memory.slice(-3500)}`;
+      system = system + '\n\nMEMORIA RECENTE DA MARIAH:\n' + memory.slice(-3500);
     }
   } catch (e) {}
-
   return system;
+}
+
+async function processMariahText(userText, source) {
+  const system = await buildMariahSystem();
+  const calendarResponse = await processMariahCalendar(userText, system);
+  const response = formatForTelegram(calendarResponse || await callClaude(system, userText, 600));
+  appendMemory(
+    AGENTS.assistente.key,
+    [
+      'Fonte: ' + source,
+      'Data: ' + getBrtNow(),
+      'Mensagem da Talita: ' + userText.slice(0, 600),
+      'Resposta da Mariah: ' + response.slice(0, 600),
+    ].join('\n')
+  ).catch(function() {});
+  return response;
 }
 
 async function readJsonBody(req) {
   if (req.body && typeof req.body === 'object') return req.body;
-
   const chunks = [];
   for await (const chunk of req) {
     chunks.push(Buffer.from(chunk));
   }
-
   const raw = Buffer.concat(chunks).toString('utf8').trim();
   if (!raw) return {};
-
   try {
     return JSON.parse(raw);
   } catch (e) {
@@ -101,11 +210,9 @@ function extractTelegramMessage(update) {
   if (!update) return null;
   const message = update.message || update.edited_message;
   if (!message) return null;
-
   const text = message.text || message.caption || '';
   const voice = message.voice;
   const photo = message.photo;
-
   return {
     chatId: message.chat && message.chat.id,
     userId: message.from && message.from.id,
@@ -113,7 +220,7 @@ function extractTelegramMessage(update) {
     text: text.trim(),
     hasVoice: !!voice,
     hasPhoto: !!photo,
-    voiceFileId: voice && voice.file_id || null,
+    voiceFileId: (voice && voice.file_id) || null,
   };
 }
 
@@ -126,15 +233,12 @@ function isAllowedChat(chatId) {
 async function transcribeVoice(fileId) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const googleKey = process.env.GOOGLE_API_KEY;
-
   const fileRes = await fetch(`${TELEGRAM_API}/bot${token}/getFile?file_id=${fileId}`);
   const fileData = await fileRes.json();
   const filePath = fileData.result.file_path;
-
   const audioRes = await fetch(`${TELEGRAM_API}/file/bot${token}/${filePath}`);
   const audioBuffer = Buffer.from(await audioRes.arrayBuffer());
   const audioBase64 = audioBuffer.toString('base64');
-
   const body = {
     contents: [
       {
@@ -145,7 +249,6 @@ async function transcribeVoice(fileId) {
       }
     ]
   };
-
   const geminiRes = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleKey}`,
     {
@@ -154,13 +257,10 @@ async function transcribeVoice(fileId) {
       body: JSON.stringify(body),
     }
   );
-
   const geminiData = await geminiRes.json();
-
   if (!geminiRes.ok) {
-    throw new Error(`Gemini status: ${geminiRes.status}`);
+    throw new Error('Gemini status: ' + geminiRes.status);
   }
-
   return geminiData.candidates[0].content.parts[0].text || '';
 }
 
@@ -168,21 +268,17 @@ async function handleTelegramUpdate(update, logger) {
   if (!logger) logger = console;
   const msg = extractTelegramMessage(update);
   if (!msg || !msg.chatId) return;
-
   if (!isAllowedChat(msg.chatId)) {
-    logger.warn(`Telegram bloqueado para chat_id=${msg.chatId}`);
+    logger.warn('Telegram bloqueado para chat_id=' + msg.chatId);
     await sendTelegramMessage(msg.chatId, 'Este bot da Mariah ainda nao esta liberado para este chat.');
     return;
   }
-
   if (msg.text === '/start') {
     await sendTelegramMessage(msg.chatId, 'Sou a Mariah. Me manda texto, ideia solta, print com legenda ou comando rapido.');
     return;
   }
-
   let userText = msg.text;
   let sourceIsVoice = false;
-
   if (!userText && msg.hasVoice) {
     try {
       userText = await transcribeVoice(msg.voiceFileId);
@@ -193,16 +289,12 @@ async function handleTelegramUpdate(update, logger) {
       userText = 'Talita enviou um audio mas nao consegui transcrever. Me conta o que era?';
     }
   }
-
   if (!userText && msg.hasPhoto) {
     userText = 'Talita enviou uma imagem no Telegram sem legenda. Responda como Mariah.';
   }
-
   if (!userText) return;
-
   const response = await processMariahText(userText, sourceIsVoice ? 'Audio' : 'Telegram');
-  const useVoice = await shouldRespondWithVoice(userText, response, sourceIsVoice);
-
+  const useVoice = shouldRespondWithVoice(userText, sourceIsVoice);
   if (useVoice) {
     try {
       const audioBuffer = await textToSpeech(response);
@@ -219,7 +311,7 @@ async function handleTelegramUpdate(update, logger) {
 function registerTelegramMariah(receiver, logger) {
   if (!logger) logger = console;
 
-  receiver.router.get('/telegram/status', (req, res) => {
+  receiver.router.get('/telegram/status', function(req, res) {
     res.json({
       ok: true,
       enabled: !!process.env.TELEGRAM_BOT_TOKEN,
@@ -228,16 +320,13 @@ function registerTelegramMariah(receiver, logger) {
     });
   });
 
-  receiver.router.post('/telegram/webhook', async (req, res) => {
+  receiver.router.post('/telegram/webhook', async function(req, res) {
     const expectedSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
     const receivedSecret = req.headers['x-telegram-bot-api-secret-token'];
-
     if (expectedSecret && receivedSecret !== expectedSecret) {
       return res.status(401).json({ ok: false, error: 'telegram_secret_invalid' });
     }
-
     res.status(200).json({ ok: true });
-
     try {
       const update = await readJsonBody(req);
       await handleTelegramUpdate(update, logger);
@@ -246,30 +335,24 @@ function registerTelegramMariah(receiver, logger) {
     }
   });
 
-  receiver.router.post('/mariah/shortcut', async (req, res) => {
+  receiver.router.post('/mariah/shortcut', async function(req, res) {
     const expectedSecret = process.env.MARIAH_SHORTCUT_SECRET || process.env.TELEGRAM_WEBHOOK_SECRET;
     const receivedSecret = (req.headers.authorization || '').replace(/^Bearer\s+/i, '') || req.query.secret;
-
     if (!expectedSecret) {
       return res.status(500).json({ ok: false, error: 'MARIAH_SHORTCUT_SECRET ausente' });
     }
-
     if (receivedSecret !== expectedSecret) {
       return res.status(401).json({ ok: false, error: 'shortcut_secret_invalid' });
     }
-
     try {
       const body = await readJsonBody(req);
       const text = String(body.text || body.message || '').trim();
       if (!text) return res.status(400).json({ ok: false, error: 'text_required' });
-
       const response = await processMariahText(text, 'Atalho iPhone');
       const chatId = body.chat_id || process.env.TELEGRAM_ALLOWED_CHAT_ID;
-
       if (body.send_to_telegram && chatId) {
         await sendTelegramMessage(chatId, response);
       }
-
       res.json({ ok: true, response });
     } catch (err) {
       logger.error('Erro no Atalho da Mariah:', err.message);
@@ -281,5 +364,6 @@ function registerTelegramMariah(receiver, logger) {
 }
 
 module.exports = { registerTelegramMariah, handleTelegramUpdate, setTelegramWebhook };
+
 
 
