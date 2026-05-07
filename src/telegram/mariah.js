@@ -99,7 +99,15 @@ async function sendTelegramVoice(chatId, audioBuffer) {
 
 async function textToSpeech(text) {
   const googleKey = process.env.GOOGLE_API_KEY;
-  const body = {
+  const body = {text = text
+  .replace(/\*\*(.*?)\*\*/g, '$1')
+  .replace(/\*(.*?)\*/g, '$1')
+  .replace(/^[-•]\s*/gm, '')
+  .replace(/#{1,6}\s*/g, '')
+  .replace(/\n{2,}/g, '. ')
+  .replace(/\n/g, ', ')
+  .trim();
+
     input: { text: text.slice(0, 4000) },
     voice: {
   languageCode: 'pt-BR',
