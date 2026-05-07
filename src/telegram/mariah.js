@@ -7,7 +7,6 @@ const { readMemory, appendMemory } = require('../memory/index');
 const { getPrivateContextForAgent } = require('../privateContext');
 
 const TELEGRAM_API = 'https://api.telegram.org';
-
 function getBrtNow() {
   return new Intl.DateTimeFormat('pt-BR', {
     timeZone: 'America/Sao_Paulo',
@@ -135,8 +134,5 @@ async function textToSpeech(text) {
   if (!response.ok) {
     throw new Error(`TTS falhou: ${JSON.stringify(data).slice(0, 200)}`);
   }
-
   return Buffer.from(data.audioContent, 'base64');
-​​​​​​​​​​​​​​​​
-
-
+​​​​​​​​}​​​​​​
