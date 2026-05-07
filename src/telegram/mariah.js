@@ -194,7 +194,7 @@ async function transcribeVoice(fileId, logger = console) {
   const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
 
   const result = await ai.models.generateContent({
-    model: 'gemini-2.5-flash-preview-04-17',
+    model: 'gemini-1.5-flash',
     contents: [
       { inlineData: { mimeType: 'audio/ogg', data: audioBuffer.toString('base64') } },
       { text: 'Transcreva este áudio em português.' },
