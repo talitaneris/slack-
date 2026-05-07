@@ -86,6 +86,24 @@ async function sendTelegramMessage(chatId, text) {
   });
 }
 
+async function processMariahText(userText, source = 'Texto') {
+  const system = await buildMariahSystem();
+  const calendarResponse = await processMariahCalendar(userText, system);
+  const response = formatForTelegram(calendarResponse || await callClaude(system, userText, 600));
+
+  appendMemory(
+    AGENTS.assistente.key,
+    [
+      `Fonte: ${source}`,
+      `Data: ${getBrtNow()}`,
+      `Mensagem da Talita: ${userText.slice(0, 600)}`,
+      `Resposta da Mariah: ${response.slice(0, 600)}`,
+    ].join('\n')
+  ).catch(() => {});
+
+  return response;
+}
+
 async function buildMariahSystem() {
   const agent = AGENTS.assistente;
   let system = [
@@ -191,21 +209,9 @@ async function handleTelegramUpdate(update, logger = console) {
 
   if (!userText) return;
 
-  const system = await buildMariahSystem();
-  const calendarResponse = await processMariahCalendar(userText, system);
-  const response = formatForTelegram(calendarResponse || await callClaude(system, userText, 600));
+  const response = await processMariahText(userText, 'Telegram');
 
   await sendTelegramMessage(msg.chatId, response);
-
-  appendMemory(
-    AGENTS.assistente.key,
-    [
-      'Fonte: Telegram',
-      `Data: ${getBrtNow()}`,
-      `Mensagem da Talita: ${userText.slice(0, 600)}`,
-      `Resposta da Mariah: ${response.slice(0, 600)}`,
-    ].join('\n')
-  ).catch(() => {});
 }
 
 function registerTelegramMariah(receiver, logger = console) {
@@ -236,7 +242,38 @@ function registerTelegramMariah(receiver, logger = console) {
     }
   });
 
-  logger.info('Telegram Mariah registrado: /telegram/webhook | /telegram/status');
+  receiver.router.post('/mariah/shortcut', async (req, res) => {
+    const expectedSecret = process.env.MARIAH_SHORTCUT_SECRET || process.env.TELEGRAM_WEBHOOK_SECRET;
+    const receivedSecret = req.headers.authorization?.replace(/^Bearer\s+/i, '') || req.query.secret;
+
+    if (!expectedSecret) {
+      return res.status(500).json({ ok: false, error: 'MARIAH_SHORTCUT_SECRET ausente' });
+    }
+
+    if (receivedSecret !== expectedSecret) {
+      return res.status(401).json({ ok: false, error: 'shortcut_secret_invalid' });
+    }
+
+    try {
+      const body = await readJsonBody(req);
+      const text = String(body.text || body.message || '').trim();
+      if (!text) return res.status(400).json({ ok: false, error: 'text_required' });
+
+      const response = await processMariahText(text, 'Atalho iPhone');
+      const chatId = body.chat_id || process.env.TELEGRAM_ALLOWED_CHAT_ID;
+
+      if (body.send_to_telegram && chatId) {
+        await sendTelegramMessage(chatId, response);
+      }
+
+      res.json({ ok: true, response });
+    } catch (err) {
+      logger.error('Erro no Atalho da Mariah:', err.message);
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  logger.info('Telegram Mariah registrado: /telegram/webhook | /telegram/status | /mariah/shortcut');
 }
 
 module.exports = { registerTelegramMariah, handleTelegramUpdate, setTelegramWebhook };
