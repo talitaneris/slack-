@@ -194,6 +194,34 @@ async function removeAprovacaoPendente(messageTs) {
   }
 }
 
+// ─── MEMÓRIA ESTRUTURADA DA MARIAH ───────────────────────────
+// Usa a mesma tabela agent_memory com chaves prefixadas por categoria.
+
+const MARIAH_CATEGORIES = ['decisoes', 'pendencias', 'aprendizados', 'preferencias', 'contexto_semanal'];
+
+async function readMariahMemory(category) {
+  return readMemory(`mariah_${category}`);
+}
+
+async function writeMariahMemory(category, content) {
+  return writeMemory(`mariah_${category}`, content);
+}
+
+async function appendMariahMemory(category, entry) {
+  const brtNow = new Date(Date.now() - 3 * 60 * 60 * 1000)
+    .toISOString().replace('T', ' ').slice(0, 16);
+  const atual = await readMariahMemory(category);
+  await writeMariahMemory(category, (atual ? atual + '\n' : '') + `[${brtNow}] ${entry}`);
+}
+
+async function readAllMariahMemory() {
+  const result = {};
+  for (const cat of MARIAH_CATEGORIES) {
+    result[cat] = await readMariahMemory(cat);
+  }
+  return result;
+}
+
 module.exports = {
   readMemory,
   appendMemory,
@@ -203,4 +231,8 @@ module.exports = {
   saveAprovacaoPendente,
   readAprovacoesPendentes,
   removeAprovacaoPendente,
+  readMariahMemory,
+  writeMariahMemory,
+  appendMariahMemory,
+  readAllMariahMemory,
 };

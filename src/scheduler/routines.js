@@ -8,6 +8,7 @@ const { listarEventos } = require('../services/calendar');
 const { listarEmailsManha } = require('../services/email');
 const { criarReuniaoZoom, isZoomConfigured } = require('../services/zoom');
 const { sendTelegramMessage } = require('../telegram/mariah');
+const { manutencaoSemanal } = require('../memory/mariah');
 
 // IDs dos canais do Slack
 const CHANNELS = {
@@ -721,6 +722,12 @@ Feche com:
     } catch (err) {
       logger.error('Erro no cron 6h30 Nara:', err.message);
     }
+  }, { timezone: 'America/Sao_Paulo' });
+
+  // ── 7h toda segunda — manutenção semanal da memória da Mariah ──
+  cron.schedule('0 7 * * 1', async () => {
+    logger.info('🧹 Cron 7h segunda — manutenção semanal da memória da Mariah');
+    await manutencaoSemanal();
   }, { timezone: 'America/Sao_Paulo' });
 
   // ── 18h45 toda segunda — cria link Zoom para A Tribus (19h) e manda no Telegram ──

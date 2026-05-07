@@ -3,7 +3,7 @@
 const { AGENTS } = require('../agents');
 const { callClaude } = require('../claude');
 const { processMariahCalendar } = require('../handlers/mariah');
-const { readMemory, appendMemory } = require('../memory/index');
+const { buildMariahMemoryContext, registrarNaMemoria } = require('../memory/mariah');
 const { getPrivateContextForAgent } = require('../privateContext');
 const { listarEmailsManha, isEmailConfigured, enviarEmail } = require('../services/email');
 const { criarReuniaoZoom, isZoomConfigured } = require('../services/zoom');
@@ -164,27 +164,34 @@ async function buildMariahSystem() {
   const agent = AGENTS.assistente;
   let system = [
     'Agora em America/Sao_Paulo: ' + getBrtNow() + '.',
-    'CANAL: Telegram. Responda como Mariah, agente executiva da Talita.',
-    'Telegram e porta de entrada rapida: mensagem curta, audio, ideia solta, comando pessoal, rotina e organizacao.',
-    'Se faltar dado/base/acesso, acione Nara ou diga qual acesso falta. Nao devolva bagunca para Talita.',
-    'Formato preferido: Entendi / Vou organizar assim / Depende de voce apenas se houver uma decisao sua.',
-    'Quando precisar de mais contexto para agir, pergunte de forma direta e natural.',
-    'IMPORTANTE: Voce TEM acesso ao email da Talita via Zoho Mail API. Quando ela pedir emails, inbox ou caixa de entrada, os emails ja foram buscados e estao no contexto da mensagem.',
+    'CANAL: Telegram. Voce e a Mariah, agente executiva da Talita.',
+    'Telegram e porta de entrada rapida: mensagem curta, audio, ideia solta, comando pessoal, rotina.',
+    'Formato preferido: Entendi / Vou organizar assim / Depende de voce apenas se houver decisao sua.',
+    '',
+    'NIVEIS DE AUTONOMIA:',
+    'FAZ SOZINHA (sem perguntar): triagem de email, agenda, link Zoom, resumos, organizar informacao, responder padrao conhecido.',
+    'AVISA ANTES (pergunta primeiro): responder por Talita para terceiros, aprovar conteudo, envolver cliente ou parceiro.',
+    'NAO TOCA NUNCA: contratos, pagamentos, decisoes estrategicas, posicionamento, definir preco.',
+    '',
+    'IMPORTANTE: Voce TEM acesso ao email da Talita via Zoho Mail API e ao Google Calendar.',
     '',
     agent.system,
   ].join('\n');
+
   try {
     const privateContext = await getPrivateContextForAgent(agent.key);
     if (privateContext && privateContext.trim()) {
       system = system + '\n\n' + privateContext;
     }
   } catch (e) {}
+
   try {
-    const memory = await readMemory(agent.key);
-    if (memory && memory.trim()) {
-      system = system + '\n\nMEMORIA RECENTE DA MARIAH:\n' + memory.slice(-3500);
+    const memoryContext = await buildMariahMemoryContext();
+    if (memoryContext) {
+      system = system + '\n\n' + memoryContext;
     }
   } catch (e) {}
+
   return system;
 }
 
@@ -252,15 +259,8 @@ async function processMariahText(userText, source) {
   const calendarResponse = await processMariahCalendar(userText, system);
   const response = formatForTelegram(calendarResponse || await callClaude(system, userText, 600));
 
-  appendMemory(
-    AGENTS.assistente.key,
-    [
-      'Fonte: ' + source,
-      'Data: ' + getBrtNow(),
-      'Mensagem da Talita: ' + userText.slice(0, 600),
-      'Resposta da Mariah: ' + response.slice(0, 600),
-    ].join('\n')
-  ).catch(() => {});
+  // Registra na memória estruturada de forma assíncrona (não bloqueia a resposta)
+  registrarNaMemoria(userText, response).catch(() => {});
 
   return response;
 }
