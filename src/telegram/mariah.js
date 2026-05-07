@@ -214,24 +214,32 @@ async function processMariahText(userText, source) {
   }
 
   if (isZoomRequest(userText) && isZoomConfigured()) {
+    const lowerZoom = userText.toLowerCase();
+    const isIndividual = lowerZoom.includes('individual') || lowerZoom.includes('1:1') || lowerZoom.includes('one on one');
+    const emailMatch = userText.match(/[\w.+\-]+@[\w.\-]+\.\w+/);
+
+    // Reunião individual sem e-mail → pede o e-mail antes de criar
+    if (isIndividual && !emailMatch) {
+      return formatForTelegram('Qual é o e-mail da participante? Assim eu já envio o link direto para ela.');
+    }
+
     try {
       const meeting = await criarReuniaoZoom({ topic: 'Reunião' });
       let reply = `🎥 *Zoom criado!*\n\n🔗 ${meeting.joinUrl}\n🔑 Senha: ${meeting.password || 'sem senha'}\n📋 ID: \`${meeting.meetingId}\``;
 
-      const emailMatch = userText.match(/[\w.+]+@[\w.]+\.\w+/);
       if (emailMatch && isEmailConfigured()) {
         try {
           await enviarEmail({
             to: emailMatch[0],
-            subject: 'Link da sua reunião',
-            body: `Aqui está o link da sua reunião:\n\n${meeting.joinUrl}\nSenha: ${meeting.password || 'sem senha'}`,
+            subject: 'Link da sua reunião com Talita',
+            body: `Olá!\n\nSegue o link para a sua reunião:\n\n${meeting.joinUrl}\nSenha: ${meeting.password || 'sem senha'}\n\nAté logo!`,
           });
           reply += `\n\n📧 Link enviado para ${emailMatch[0]}`;
         } catch (err) {
           reply += `\n\n⚠️ E-mail não enviado: ${err.message}`;
         }
       } else if (emailMatch) {
-        reply += '\n\n_Adicione ZOHO_OAUTH* no Render para envio de e-mail._';
+        reply += '\n\n_Configure ZOHO_OAUTH* no Render para envio de e-mail._';
       }
 
       return formatForTelegram(reply);
