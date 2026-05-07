@@ -5,7 +5,7 @@ const { callClaude } = require('../claude');
 const { processMariahCalendar } = require('../handlers/mariah');
 const { readMemory, appendMemory } = require('../memory/index');
 const { getPrivateContextForAgent } = require('../privateContext');
-const { listarEmailsManha, isEmailConfigured } = require('./services/email');
+const { listarEmailsManha, isEmailConfigured } = require('../services/email');
 
 const TELEGRAM_API = 'https://api.telegram.org';
 
