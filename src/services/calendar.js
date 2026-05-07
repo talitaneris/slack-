@@ -7,12 +7,43 @@
  *   GOOGLE_CLIENT_ID      — ID do cliente OAuth2
  *   GOOGLE_CLIENT_SECRET  — Secret do cliente OAuth2
  *   GOOGLE_REFRESH_TOKEN  — Token de refresh (gerado uma vez pelo script scripts/google-auth.js)
- *   GOOGLE_CALENDAR_ID    — ID do calendário (padrão: 'primary')
+ *   GOOGLE_CALENDAR_ID    — ID do calendário, ou 'all' para ler todas as agendas
+ *   GOOGLE_CALENDAR_WRITE_ID — ID do calendário usado para criar eventos (padrão: 'primary')
  */
 
 const { google } = require('googleapis');
 
 const CALENDAR_ID = process.env.GOOGLE_CALENDAR_ID || 'primary';
+const WRITE_CALENDAR_ID = process.env.GOOGLE_CALENDAR_WRITE_ID || 'primary';
+
+async function getReadableCalendarIds(calendar) {
+  if (CALENDAR_ID !== 'all') return [{ id: CALENDAR_ID, summary: '' }];
+
+  const res = await calendar.calendarList.list({
+    minAccessRole: 'reader',
+    showHidden: false,
+  });
+
+  return (res.data.items || [])
+    .filter(item => item.id)
+    .map(item => ({
+      id: item.id,
+      summary: item.summary || item.id,
+    }));
+}
+
+function formatEvent(ev, calendarName = '') {
+  const inicio = ev.start.dateTime
+    ? new Date(ev.start.dateTime).toLocaleString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+    : 'dia todo';
+
+  const origem = calendarName ? ` [${calendarName}]` : '';
+  return `• ${inicio} — ${ev.summary || 'Sem título'}${origem}${ev.location ? ` (${ev.location})` : ''}`;
+}
 
 /**
  * Retorna um cliente OAuth2 autenticado.
@@ -47,31 +78,46 @@ function getAuth() {
 async function listarEventos(inicio, fim) {
   try {
     const auth = getAuth();
-    if (!auth) return '⚠️ Google Calendar não configurado.';
+    if (!auth) return 'Google Calendar não configurado.';
 
     const calendar = google.calendar({ version: 'v3', auth });
-    const res = await calendar.events.list({
-      calendarId: CALENDAR_ID,
-      timeMin: inicio.toISOString(),
-      timeMax: fim.toISOString(),
-      singleEvents: true,
-      orderBy: 'startTime',
-      maxResults: 20,
-    });
+    const calendars = await getReadableCalendarIds(calendar);
+    const eventosPorAgenda = await Promise.all(calendars.map(async agenda => {
+      try {
+        const res = await calendar.events.list({
+          calendarId: agenda.id,
+          timeMin: inicio.toISOString(),
+          timeMax: fim.toISOString(),
+          singleEvents: true,
+          orderBy: 'startTime',
+          maxResults: 20,
+        });
 
-    const eventos = res.data.items || [];
-    if (eventos.length === 0) return '📭 Agenda livre nesse período.';
+        return (res.data.items || []).map(ev => ({
+          ev,
+          calendarName: CALENDAR_ID === 'all' ? agenda.summary : '',
+          start: ev.start.dateTime || ev.start.date || '',
+        }));
+      } catch (err) {
+        console.warn('[calendar] Agenda ignorada:', agenda.summary || agenda.id, err.message);
+        return [];
+      }
+    }));
 
-    return eventos.map(ev => {
-      const inicio = ev.start.dateTime
-        ? new Date(ev.start.dateTime).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })
-        : 'dia todo';
-      return `• ${inicio} — ${ev.summary}${ev.location ? ` (${ev.location})` : ''}`;
-    }).join('\n');
+    const eventos = eventosPorAgenda
+      .flat()
+      .sort((a, b) => String(a.start).localeCompare(String(b.start)));
+
+    if (eventos.length === 0) return 'Agenda livre nesse período.';
+
+    return eventos
+      .slice(0, 30)
+      .map(({ ev, calendarName }) => formatEvent(ev, calendarName))
+      .join('\n');
 
   } catch (err) {
     console.error('[calendar] Erro ao listar eventos:', err.message);
-    return `❌ Erro ao consultar agenda: ${err.message}`;
+    return `Erro ao consultar agenda: ${err.message}`;
   }
 }
 
@@ -86,11 +132,11 @@ async function listarEventos(inicio, fim) {
 async function criarEvento(titulo, inicio, fim, descricao = '') {
   try {
     const auth = getAuth();
-    if (!auth) return '⚠️ Google Calendar não configurado.';
+    if (!auth) return 'Google Calendar não configurado.';
 
     const calendar = google.calendar({ version: 'v3', auth });
     const res = await calendar.events.insert({
-      calendarId: CALENDAR_ID,
+      calendarId: WRITE_CALENDAR_ID,
       requestBody: {
         summary: titulo,
         description: descricao,
@@ -101,27 +147,27 @@ async function criarEvento(titulo, inicio, fim, descricao = '') {
 
     const link = res.data.htmlLink;
     const hora = inicio.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'long', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-    return `✅ Evento criado: *${titulo}* — ${hora}\n🔗 ${link}`;
+    return `Evento criado: *${titulo}* — ${hora}\n${link}`;
 
   } catch (err) {
     console.error('[calendar] Erro ao criar evento:', err.message);
-    return `❌ Erro ao criar evento: ${err.message}`;
+    return `Erro ao criar evento: ${err.message}`;
   }
 }
 
 /**
  * Deleta um evento pelo ID.
  */
-async function deletarEvento(eventId) {
+async function deletarEvento(eventId, calendarId = WRITE_CALENDAR_ID) {
   try {
     const auth = getAuth();
-    if (!auth) return '⚠️ Google Calendar não configurado.';
+    if (!auth) return 'Google Calendar não configurado.';
 
     const calendar = google.calendar({ version: 'v3', auth });
-    await calendar.events.delete({ calendarId: CALENDAR_ID, eventId });
-    return '✅ Evento removido da agenda.';
+    await calendar.events.delete({ calendarId, eventId });
+    return 'Evento removido da agenda.';
   } catch (err) {
-    return `❌ Erro ao remover evento: ${err.message}`;
+    return `Erro ao remover evento: ${err.message}`;
   }
 }
 
@@ -136,18 +182,33 @@ async function buscarEvento(termo, dias = 30) {
     const calendar = google.calendar({ version: 'v3', auth });
     const agora = new Date();
     const fim   = new Date(agora.getTime() + dias * 24 * 60 * 60 * 1000);
+    const calendars = await getReadableCalendarIds(calendar);
+    const results = await Promise.all(calendars.map(async agenda => {
+      try {
+        const res = await calendar.events.list({
+          calendarId: agenda.id,
+          q: termo,
+          timeMin: agora.toISOString(),
+          timeMax: fim.toISOString(),
+          singleEvents: true,
+          orderBy: 'startTime',
+          maxResults: 5,
+        });
 
-    const res = await calendar.events.list({
-      calendarId: CALENDAR_ID,
-      q: termo,
-      timeMin: agora.toISOString(),
-      timeMax: fim.toISOString(),
-      singleEvents: true,
-      orderBy: 'startTime',
-      maxResults: 5,
-    });
+        return (res.data.items || []).map(ev => ({
+          ...ev,
+          calendarId: agenda.id,
+          calendarName: agenda.summary || agenda.id,
+        }));
+      } catch {
+        return [];
+      }
+    }));
 
-    return res.data.items || [];
+    return results
+      .flat()
+      .sort((a, b) => String(a.start?.dateTime || a.start?.date || '').localeCompare(String(b.start?.dateTime || b.start?.date || '')))
+      .slice(0, 10);
   } catch {
     return [];
   }

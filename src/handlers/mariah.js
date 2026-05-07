@@ -109,10 +109,16 @@ async function processMariahCalendar(userMessage, systemPrompt) {
       if (eventos.length === 0) {
         calendarResult = `Não encontrei nenhum evento com "${dados.termo}" nos próximos 30 dias.`;
       } else if (eventos.length === 1) {
-        calendarResult = await deletarEvento(eventos[0].id);
+        calendarResult = await deletarEvento(eventos[0].id, eventos[0].calendarId);
       } else {
         // Mais de um resultado — pede confirmação
-        const lista = eventos.map((e, i) => `${i + 1}. ${e.summary} — ${new Date(e.start.dateTime).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`).join('\n');
+        const lista = eventos.map((e, i) => {
+          const inicio = e.start.dateTime
+            ? new Date(e.start.dateTime).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+            : 'dia todo';
+          const origem = e.calendarName ? ` [${e.calendarName}]` : '';
+          return `${i + 1}. ${e.summary} — ${inicio}${origem}`;
+        }).join('\n');
         calendarResult = `Encontrei mais de um evento. Qual deles?\n${lista}`;
       }
     }
@@ -126,7 +132,8 @@ async function processMariahCalendar(userMessage, systemPrompt) {
           const hora = e.start.dateTime
             ? new Date(e.start.dateTime).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
             : 'dia todo';
-          return `• ${hora} — ${e.summary}`;
+          const origem = e.calendarName ? ` [${e.calendarName}]` : '';
+          return `• ${hora} — ${e.summary}${origem}`;
         }).join('\n');
       }
     }
