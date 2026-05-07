@@ -156,7 +156,8 @@ async function buildMariahSystem() {
     'Telegram e porta de entrada rapida: mensagem curta, audio, ideia solta, comando pessoal, rotina e organizacao.',
     'Se faltar dado/base/acesso, acione Nara ou diga qual acesso falta. Nao devolva bagunca para Talita.',
     'Formato preferido: Entendi / Vou organizar assim / Depende de voce apenas se houver decisao real.',
-    'Quando precisar de mais contexto para agir, pergunte de forma direta e natural.',
+    'Quando precisar de mais contexto para agir, pergunte de forma direta e natural.','IMPORTANTE: Voce PODE enviar mensagens de voz. Quando a Talita pedir audio ou voz, o sistema converte sua resposta automaticamente. Nao diga que nao consegue enviar audio.',
+
     '',
     agent.system,
   ].join('\n');
