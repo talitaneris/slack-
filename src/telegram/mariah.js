@@ -85,20 +85,28 @@ async function sendTelegramMessage(chatId, text) {
   });
 }
 
-async function sendTelegramVoice(chatId, audioBuffer) {
+async function sendTelegramVoice(chatId, audioBuffer, mimeType = 'audio/ogg; codecs=opus') {
   const token = process.env.TELEGRAM_BOT_TOKEN;
+  const isOgg = mimeType.includes('ogg');
   const formData = new FormData();
   formData.append('chat_id', String(chatId));
-  formData.append('voice', new Blob([audioBuffer], { type: 'audio/ogg; codecs=opus' }), 'voice.ogg');
-  const response = await fetch(`${TELEGRAM_API}/bot${token}/sendVoice`, {
-    method: 'POST',
-    body: formData,
-  });
-  if (!response.ok) {
-    const body = await response.text().catch(() => '');
-    throw new Error(`sendVoice falhou: ${response.status} ${body.slice(0, 200)}`);
+  if (isOgg) {
+    formData.append('voice', new Blob([audioBuffer], { type: mimeType }), 'voice.ogg');
+    const response = await fetch(`${TELEGRAM_API}/bot${token}/sendVoice`, { method: 'POST', body: formData });
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      throw new Error(`sendVoice falhou: ${response.status} ${body.slice(0, 200)}`);
+    }
+    return response.json();
+  } else {
+    formData.append('audio', new Blob([audioBuffer], { type: mimeType }), 'mariah.mp3');
+    const response = await fetch(`${TELEGRAM_API}/bot${token}/sendAudio`, { method: 'POST', body: formData });
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      throw new Error(`sendAudio falhou: ${response.status} ${body.slice(0, 200)}`);
+    }
+    return response.json();
   }
-  return response.json();
 }
 
 function cleanTextForSpeech(text) {
@@ -159,7 +167,13 @@ async function textToSpeechElevenLabs(spokenText) {
   }
 
   const mp3Buffer = Buffer.from(await response.arrayBuffer());
-  return convertMp3ToOgg(mp3Buffer);
+  try {
+    const oggBuffer = await convertMp3ToOgg(mp3Buffer);
+    return { buffer: oggBuffer, mime: 'audio/ogg; codecs=opus' };
+  } catch {
+    // ffmpeg unavailable — send MP3 directly via sendAudio
+    return { buffer: mp3Buffer, mime: 'audio/mpeg' };
+  }
 }
 
 async function textToSpeechGoogle(spokenText) {
@@ -175,7 +189,7 @@ async function textToSpeechGoogle(spokenText) {
   );
   const data = await response.json();
   if (!response.ok) throw new Error(`Google TTS falhou: ${JSON.stringify(data).slice(0, 200)}`);
-  return Buffer.from(data.audioContent, 'base64');
+  return { buffer: Buffer.from(data.audioContent, 'base64'), mime: 'audio/ogg; codecs=opus' };
 }
 
 async function textToSpeech(text) {
@@ -186,13 +200,18 @@ async function textToSpeech(text) {
   return textToSpeechGoogle(spokenText);
 }
 
+function normalizeText(text) {
+  return text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
 function shouldRespondWithVoice(userText, sourceIsVoice) {
   if (sourceIsVoice) return true;
-  const lower = userText.toLowerCase();
+  const lower = normalizeText(userText);
   const voiceRequests = [
     'responde em audio', 'manda audio', 'quero ouvir',
     'fala pra mim', 'me manda audio', 'resposta em audio',
-    'audio por favor', 'em voz', 'me fala'
+    'audio por favor', 'em voz', 'me fala', 'responder em audio',
+    'responde audio', 'manda em audio', 'em audio',
   ];
   if (voiceRequests.some(t => lower.includes(t))) return true;
   const textTriggers = [
@@ -519,8 +538,8 @@ async function handleTelegramUpdate(update, logger) {
   const useVoice = shouldRespondWithVoice(userText, sourceIsVoice);
   if (useVoice) {
     try {
-      const audioBuffer = await textToSpeech(response);
-      await sendTelegramVoice(msg.chatId, audioBuffer);
+      const { buffer, mime } = await textToSpeech(response);
+      await sendTelegramVoice(msg.chatId, buffer, mime);
     } catch (err) {
       logger.error('Erro ao gerar voz:', err.message);
       await sendTelegramMessage(msg.chatId, response);
