@@ -463,8 +463,6 @@ function isAllowedChat(chatId) {
 
 async function transcribeVoice(fileId) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  const googleKey = process.env.GOOGLE_CLOUD_API_KEY || process.env.GOOGLE_API_KEY;
-  if (!googleKey) throw new Error('GOOGLE_CLOUD_API_KEY/GOOGLE_API_KEY ausente');
 
   const fileRes = await fetch(`${TELEGRAM_API}/bot${token}/getFile?file_id=${fileId}`);
   const fileData = await fileRes.json();
@@ -479,33 +477,26 @@ async function transcribeVoice(fileId) {
   const audioBuffer = Buffer.from(await audioRes.arrayBuffer());
   const audioBase64 = audioBuffer.toString('base64');
 
-  const speechBody = {
-    config: {
-      encoding: 'OGG_OPUS',
-      sampleRateHertz: 48000,
-      languageCode: 'pt-BR',
-      model: 'latest_long',
-    },
-    audio: { content: audioBase64 },
-  };
-  const speechRes = await fetch(
-    `https://speech.googleapis.com/v1/speech:recognize?key=${googleKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(speechBody),
-    }
-  );
-  const speechData = await speechRes.json();
-  if (!speechRes.ok) {
-    const detail = speechData?.error?.message || `Speech status: ${speechRes.status}`;
-    throw new Error(detail.slice(0, 180));
-  }
-  const transcript = (speechData.results || [])
-    .map(r => r.alternatives?.[0]?.transcript || '')
-    .join(' ')
-    .trim();
-  return transcript;
+  const Anthropic = require('@anthropic-ai/sdk');
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const result = await anthropic.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 500,
+    messages: [{
+      role: 'user',
+      content: [
+        {
+          type: 'document',
+          source: { type: 'base64', media_type: 'audio/ogg', data: audioBase64 },
+        },
+        {
+          type: 'text',
+          text: 'Transcreva este audio em portugues do Brasil. Retorne somente a transcricao, sem comentario.',
+        },
+      ],
+    }],
+  });
+  return result.content[0].text.trim();
 }
 
 async function handleTelegramUpdate(update, logger) {
