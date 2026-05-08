@@ -463,6 +463,8 @@ function isAllowedChat(chatId) {
 
 async function transcribeVoice(fileId) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
+  const googleKey = process.env.GOOGLE_CLOUD_API_KEY || process.env.GOOGLE_API_KEY;
+  if (!googleKey) throw new Error('GOOGLE_CLOUD_API_KEY ausente');
 
   const fileRes = await fetch(`${TELEGRAM_API}/bot${token}/getFile?file_id=${fileId}`);
   const fileData = await fileRes.json();
@@ -477,26 +479,25 @@ async function transcribeVoice(fileId) {
   const audioBuffer = Buffer.from(await audioRes.arrayBuffer());
   const audioBase64 = audioBuffer.toString('base64');
 
-  const Anthropic = require('@anthropic-ai/sdk');
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const result = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 500,
-    messages: [{
-      role: 'user',
-      content: [
-        {
-          type: 'document',
-          source: { type: 'base64', media_type: 'audio/ogg', data: audioBase64 },
-        },
-        {
-          type: 'text',
-          text: 'Transcreva este audio em portugues do Brasil. Retorne somente a transcricao, sem comentario.',
-        },
+  const model = process.env.GEMINI_TRANSCRIBE_MODEL || 'gemini-2.5-flash';
+  const body = {
+    contents: [{
+      parts: [
+        { inlineData: { mimeType: 'audio/ogg', data: audioBase64 } },
+        { text: 'Transcreva este audio em portugues do Brasil. Retorne somente a transcricao, sem comentario.' },
       ],
     }],
-  });
-  return result.content[0].text.trim();
+  };
+  const geminiRes = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleKey}`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+  );
+  const geminiData = await geminiRes.json();
+  if (!geminiRes.ok) {
+    const detail = geminiData?.error?.message || `Gemini status: ${geminiRes.status}`;
+    throw new Error(detail.slice(0, 180));
+  }
+  return geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 
 async function handleTelegramUpdate(update, logger) {
