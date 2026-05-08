@@ -5,6 +5,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 const MAX_CONTEXT_CHARS = 14000;
 
 const BASE_DOCS = [
+  '00-identidade/contexto-privado-boot.md',
   'README.md',
   '00-identidade/talita-quem-e.md',
   '00-identidade/talita-gaps-habilidades.md',
