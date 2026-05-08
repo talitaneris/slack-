@@ -56,6 +56,34 @@ Regras:
 - Se não há nada relevante numa categoria, retorne null
 - Seja conciso — 1 linha por entrada no máximo`;
 
+async function alertarContradicaoTelegram(descricao) {
+  try {
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+    const chatId = process.env.TELEGRAM_ALLOWED_CHAT_ID;
+    if (!token || !chatId) return;
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: `Atenção: essa decisão pode contradizer uma anterior.\n\n${descricao}` }),
+    });
+  } catch {}
+}
+
+async function verificarContradicao(novaDecisao, decisoesExistentes) {
+  if (!decisoesExistentes?.trim()) return null;
+  try {
+    const raw = await callClaude(
+      'Você verifica contradições entre decisões. Retorne JSON válido sem markdown: {"contradiz": true ou false, "descricao": "qual contradição ou null"}',
+      `Nova decisão: "${novaDecisao}"\n\nDecisões anteriores:\n${decisoesExistentes.slice(0, 800)}`,
+      150
+    );
+    const result = JSON.parse(raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
+    return result.contradiz ? result.descricao : null;
+  } catch {
+    return null;
+  }
+}
+
 async function registrarNaMemoria(userText, mariahResponse) {
   try {
     const prompt = `Mensagem da Talita: "${userText.slice(0, 400)}"\n\nResposta da Mariah: "${mariahResponse.slice(0, 400)}"\n\nO que deve ser registrado na memória permanente?`;
@@ -72,6 +100,15 @@ async function registrarNaMemoria(userText, mariahResponse) {
     for (const [cat, valor] of Object.entries(parsed)) {
       if (valor && typeof valor === 'string' && valor.trim()) {
         const atual = memories[cat] || '';
+
+        // Verifica contradição antes de salvar nova decisão
+        if (cat === 'decisoes' && atual) {
+          const contradicao = await verificarContradicao(valor.trim(), atual);
+          if (contradicao) {
+            alertarContradicaoTelegram(contradicao).catch(() => {});
+          }
+        }
+
         await writeMariahMemory(cat, (atual ? atual + '\n' : '') + `[${brtNow}] ${valor.trim()}`);
       }
     }
