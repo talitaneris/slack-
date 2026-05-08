@@ -2,7 +2,8 @@
 
 const DEFAULT_BRANCH = 'main';
 const CACHE_TTL_MS = 5 * 60 * 1000;
-const MAX_CONTEXT_CHARS = 14000;
+const MAX_CONTEXT_CHARS = Number(process.env.PRIVATE_CONTEXT_MAX_CHARS || 7000);
+const MAX_FILE_CHARS = Number(process.env.PRIVATE_CONTEXT_MAX_FILE_CHARS || 2200);
 
 const BASE_DOCS = [
   '00-identidade/contexto-privado-boot.md',
@@ -110,6 +111,11 @@ function truncateMiddle(text, maxChars) {
   return `${text.slice(0, head)}\n\n[...contexto privado truncado para caber no prompt...]\n\n${text.slice(-tail)}`;
 }
 
+function truncateFile(text, maxChars = MAX_FILE_CHARS) {
+  if (!text || text.length <= maxChars) return text || '';
+  return `${text.slice(0, maxChars)}\n\n[...arquivo truncado...]`;
+}
+
 async function fetchPrivateFile(path) {
   const token = process.env.PRIVATE_CONTEXT_GITHUB_TOKEN;
   const repo = process.env.PRIVATE_CONTEXT_REPO;
@@ -158,7 +164,7 @@ async function getPrivateContextForAgent(agentKey) {
     try {
       const content = await fetchPrivateFile(path);
       if (content && content.trim()) {
-        parts.push(`### ${path}\n${content.trim()}`);
+        parts.push(`### ${path}\n${truncateFile(content.trim())}`);
       }
     } catch (err) {
       console.warn(`⚠️ Falha ao carregar contexto privado ${path}: ${err.message}`);
