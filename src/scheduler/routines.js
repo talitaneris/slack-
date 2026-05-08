@@ -7,7 +7,7 @@ const { getPrivateContextForAgent } = require('../privateContext');
 const { listarEventos } = require('../services/calendar');
 const { listarEmailsManha } = require('../services/email');
 const { criarReuniaoZoom, isZoomConfigured } = require('../services/zoom');
-const { sendTelegramMessage } = require('../telegram/mariah');
+const { sendTelegramMessage, getMilestoneContext } = require('../telegram/mariah');
 const { manutencaoSemanal, buildMariahMemoryContext } = require('../memory/mariah');
 
 // IDs dos canais do Slack
@@ -791,17 +791,20 @@ ${contextoPlanejamento}`;
         }
       } catch {}
 
+      const milestones = getMilestoneContext();
       const system = `Você é a Mariah, agente executiva da Talita. É 7h da manhã.
 Envie um briefing diário curto, direto e útil. Sem saudação, sem emoji, sem introdução.
 Formato obrigatório:
 Hoje pede:
 Agenda: (lista os eventos do dia ou "agenda limpa")
 Pendências em aberto: (só as urgentes ou com prazo próximo da memória — máximo 3)
+Prazos chegando: (use os PRAZOS DO NEGÓCIO abaixo — mencione só os que estão a menos de 21 dias)
 Eu já vou: (o que a Mariah vai fazer sem precisar pedir)
 Depende de você: (só se houver decisão real pendente)
-${memoria}`;
+${memoria}
+${milestones}`;
 
-      const briefing = await callClaude(system, `Gere o briefing de hoje.${agendaHoje}`, 400);
+      const briefing = await callClaude(system, `Gere o briefing de hoje.${agendaHoje}`, 450);
       await sendTelegramMessage(chatId, briefing);
     } catch (err) {
       logger.error('Erro no briefing 7h Mariah:', err.message);

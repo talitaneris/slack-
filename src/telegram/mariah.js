@@ -356,6 +356,9 @@ async function buildMariahSystem() {
     }
   } catch (e) {}
 
+  const milestones = getMilestoneContext();
+  if (milestones) system = system + '\n\n' + milestones;
+
   return system;
 }
 
@@ -382,6 +385,50 @@ function getBrtTodayRange() {
     end: new Date(`${year}-${month}-${day}T23:59:59-03:00`),
     label: `${day}/${month}/${year}`,
   };
+}
+
+// ─── MILESTONES — prazos fixos do negócio ────────────────────
+
+const MILESTONES = [
+  { label: 'Turma 1 A Base começa', date: '2026-06-09' },
+  { label: 'Evento (04/07)', date: '2026-07-04' },
+  { label: 'Turma 2 A Base começa', date: '2026-08-11' },
+  { label: 'Turma 3 A Base começa', date: '2026-10-13' },
+  { label: 'Turma 3 A Base encerra', date: '2026-12-22' },
+];
+
+function getMilestoneContext() {
+  const now = new Date();
+  const upcoming = MILESTONES
+    .map(m => ({ ...m, dias: Math.ceil((new Date(m.date + 'T00:00:00-03:00') - now) / (1000 * 60 * 60 * 24)) }))
+    .filter(m => m.dias >= 0 && m.dias <= 60)
+    .sort((a, b) => a.dias - b.dias);
+  if (upcoming.length === 0) return '';
+  return 'PRAZOS DO NEGÓCIO (use para contextualizar urgência):\n' +
+    upcoming.map(m => `• ${m.label}: ${m.dias} dia(s)`).join('\n');
+}
+
+// ─── DETECÇÃO DE INTENÇÃO ─────────────────────────────────────
+
+function isIdeaMessage(text) {
+  if (text.length < 80) return false;
+  const lower = normalizeText(text);
+  return [
+    'pensei em', 'tive uma ideia', 'ideia de', 'quero fazer', 'quero criar',
+    'podia fazer', 'poderia fazer', 'que tal fazer', 'vamos fazer', 'vou criar',
+    'preciso criar', 'quero lançar', 'vou lançar', 'quero desenvolver',
+    'e se a gente', 'pensei em criar', 'to pensando em',
+  ].some(t => lower.includes(normalizeText(t)));
+}
+
+function isDecisaoRequest(text) {
+  const lower = normalizeText(text);
+  return [
+    'o que voce acha', 'o que acha de', 'como devo', 'o que devo fazer',
+    'qual e melhor', 'qual seria melhor', 'como faco', 'o que fazer com',
+    'me ajuda a decidir', 'nao sei se', 'estou em duvida', 'fico na duvida',
+    'vale a pena', 'devo ou nao', 'faco ou nao',
+  ].some(t => lower.includes(t));
 }
 
 function isBriefingRequest(text) {
@@ -504,11 +551,62 @@ async function processMariahText(userText, source) {
 
   const system = await buildMariahSystem();
   const calendarResponse = await processMariahCalendar(userText, system);
-  const response = formatForTelegram(calendarResponse || await callClaude(system, userText, 600));
+  if (calendarResponse) {
+    registrarNaMemoria(userText, calendarResponse).catch(() => {});
+    return formatForTelegram(calendarResponse);
+  }
 
-  // Registra na memória estruturada de forma assíncrona (não bloqueia a resposta)
+  // Ideia solta → plano estruturado
+  if (isIdeaMessage(userText)) {
+    const prompt = `A Talita mandou uma ideia ou projeto. Não responda como conversa — entregue um plano estruturado.
+
+Mensagem da Talita: "${userText}"
+
+Formato obrigatório:
+O que é: [1 frase]
+Por que faz sentido agora: [1 frase com oportunidade ou urgência]
+Como executar:
+• [ação] — [dono do squad] — [prazo em dias/data]
+• ...
+Decisão sua: [só o que depende de Talita — se não houver, omita]
+Eu já aciono: [quem do squad faz o quê — acione de verdade via delegação]
+
+Máximo 200 palavras. Sem emoji. Sem introdução.`;
+    const response = formatForTelegram(await callClaude(system, prompt, 500));
+    registrarNaMemoria(userText, response).catch(() => {});
+    return response;
+  }
+
+  // Decisão pendente → 3 cenários
+  if (isDecisaoRequest(userText)) {
+    const prompt = `A Talita está diante de uma decisão. Não dê só uma resposta — apresente 3 cenários.
+
+Mensagem da Talita: "${userText}"
+
+Formato obrigatório:
+*Cenário A — [nome curto da opção conservadora]*
+Resultado: [o que acontece]
+Risco: [o que pode dar errado]
+
+*Cenário B — [nome curto da opção intermediária]*
+Resultado: [o que acontece]
+Risco: [o que pode dar errado]
+
+*Cenário C — [nome curto da opção mais rápida/agressiva]*
+Resultado: [o que acontece]
+Risco: [o que pode dar errado]
+
+Minha recomendação: [qual e por quê em 1 frase direta]
+
+Sem emoji. Sem introdução. Direto ao ponto.`;
+    const response = formatForTelegram(await callClaude(system, prompt, 500));
+    registrarNaMemoria(userText, response).catch(() => {});
+    return response;
+  }
+
+  // Conversa padrão
+  const response = formatForTelegram(await callClaude(system, userText, 600));
   registrarNaMemoria(userText, response).catch(() => {});
-
   return response;
 }
 
@@ -705,4 +803,4 @@ function registerTelegramMariah(receiver, logger, slackClient) {
   logger.info('Telegram Mariah registrado: /telegram/webhook | /telegram/status | /mariah/shortcut');
 }
 
-module.exports = { registerTelegramMariah, handleTelegramUpdate, setTelegramWebhook, sendTelegramMessage };
+module.exports = { registerTelegramMariah, handleTelegramUpdate, setTelegramWebhook, sendTelegramMessage, getMilestoneContext };
