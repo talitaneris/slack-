@@ -29,6 +29,7 @@ const AGENT_DOCS = {
     '06-financeiro/diagnostico-financeiro.md',
     '07-produto/atribus-oferta.md',
     '07-produto/atribus-icp.md',
+    '02-empresa/objetivos-empresa.md',
   ],
   sofia: [
     '06-financeiro/diagnostico-financeiro.md',
@@ -50,6 +51,7 @@ const AGENT_DOCS = {
   lia: [
     '07-produto/atribus-oferta.md',
     '07-produto/atribus-icp.md',
+    '02-empresa/objetivos-empresa.md',
   ],
   marta: [
     '07-produto/atribus-oferta.md',
@@ -91,6 +93,7 @@ const AGENT_DOCS = {
     '00-identidade/talita-saude-rotina.md',
     '00-identidade/talita-reset-pessoal.md',
     '05-squad/canais-agentes.md',
+    '02-empresa/objetivos-empresa.md',
   ],
 };
 
