@@ -765,10 +765,59 @@ ${memoria}`;
     }
   }, { timezone: 'America/Sao_Paulo' });
 
-  // ── 7h toda segunda — manutenção semanal da memória da Mariah ──
+  // ── 7h toda segunda — manutenção semanal + resumo da semana anterior ──
   cron.schedule('0 7 * * 1', async () => {
     logger.info('🧹 Cron 7h segunda — manutenção semanal da memória da Mariah');
     await manutencaoSemanal();
+
+    // Gatilho 2: resumo da semana anterior
+    const chatId = process.env.TELEGRAM_ALLOWED_CHAT_ID;
+    if (!chatId) return;
+    try {
+      const now = new Date();
+      const seg = new Date(now); seg.setDate(now.getDate() - 7); seg.setHours(0, 0, 0, 0);
+      const dom = new Date(now); dom.setDate(now.getDate() - 1); dom.setHours(23, 59, 59, 999);
+      let eventosStr = '';
+      try {
+        const eventos = await listarEventos(seg.toISOString(), dom.toISOString());
+        eventosStr = eventos.map(e => `• ${e.summary}`).join('\n');
+      } catch {}
+      const recap = await callClaude(
+        'Você é a Mariah. É segunda-feira. Gere um resumo direto da semana anterior para a Talita. Máximo 100 palavras. Sem saudação. Formato: O que aconteceu / O que não andou / O que carrega esta semana.',
+        `Eventos da semana:\n${eventosStr || 'sem dados de agenda'}`,
+        250
+      );
+      await sendTelegramMessage(chatId, recap);
+    } catch (err) {
+      logger.error('[gatilho-recap] Erro:', err.message);
+    }
+  }, { timezone: 'America/Sao_Paulo' });
+
+  // ── 20h todo dia — gatilho 3: reunião sem pauta no dia seguinte ──
+  cron.schedule('0 20 * * *', async () => {
+    const chatId = process.env.TELEGRAM_ALLOWED_CHAT_ID;
+    if (!chatId) return;
+    try {
+      const amanha = new Date();
+      amanha.setDate(amanha.getDate() + 1);
+      const brt = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(amanha);
+      const [y, m, d] = brt.split('-');
+      const start = new Date(`${y}-${m}-${d}T00:00:00-03:00`);
+      const end   = new Date(`${y}-${m}-${d}T23:59:59-03:00`);
+      const eventos = await listarEventos(start.toISOString(), end.toISOString());
+      const reunioes = ['reunião', 'reuniao', 'call', 'conversa', 'sessão', 'sessao', 'mentoria', 'meet', 'alinhamento'];
+      const semPauta = eventos.filter(e =>
+        e.summary && reunioes.some(k => e.summary.toLowerCase().includes(k)) && !e.description?.trim()
+      );
+      for (const ev of semPauta) {
+        const hora = ev.start?.dateTime
+          ? new Date(ev.start.dateTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+          : 'horário a confirmar';
+        await sendTelegramMessage(chatId, `Amanhã: ${ev.summary} às ${hora} sem pauta. Preparo ou cancela?`);
+      }
+    } catch (err) {
+      logger.error('[gatilho-pauta] Erro:', err.message);
+    }
   }, { timezone: 'America/Sao_Paulo' });
 
   // ── 18h45 toda segunda — cria link Zoom para A Tribus (19h) e manda no Telegram ──

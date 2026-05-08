@@ -60,6 +60,44 @@ async function detectarEDelegarSquad(userText, mariahResponse, logger) {
   }
 }
 
+// ─── GATILHO 1: NOVO CLIENTE / FECHAMENTO ────────────────────
+
+function isNovoClienteGatilho(text) {
+  const lower = normalizeText(text);
+  return [
+    'fechou', 'cliente novo', 'nova cliente', 'nova mentorada', 'novo mentorado',
+    'assinou', 'entrou no grupo', 'entrou na mentoria', 'pagou', 'comprou',
+    'confirmou pagamento', 'cliente fechou', 'fechamento confirmado',
+  ].some(t => lower.includes(t));
+}
+
+async function acionarOnboarding(userText, chatId, logger) {
+  try {
+    const nome = await callClaude(
+      'Extraia apenas o nome do cliente ou mentorada mencionado. Se não houver nome claro, retorne "novo cliente". Retorne só o nome, sem mais texto.',
+      userText.slice(0, 300),
+      30
+    );
+    const nomeCliente = nome.trim();
+
+    if (_slackClient) {
+      await _slackClient.chat.postMessage({
+        channel: 'C0AMR126AN8', // Mari — atendimento
+        text: `*Mariah → Mari*\nNovo cliente confirmado: ${nomeCliente}.\nAções: criar acesso, enviar boas-vindas, agendar kickoff.`,
+      });
+      await _slackClient.chat.postMessage({
+        channel: 'C0AMJ13D85T', // Lia — vendas
+        text: `*Mariah → Lia*\nFechamento confirmado: ${nomeCliente}. Registrar no pipeline e marcar como ganho.`,
+      });
+    }
+
+    await sendTelegramMessage(chatId, `Onboarding acionado para ${nomeCliente}. Mari e Lia foram avisadas.`);
+    logger?.info(`[gatilho-cliente] Onboarding acionado: ${nomeCliente}`);
+  } catch (err) {
+    logger?.error('[gatilho-cliente] Erro:', err.message);
+  }
+}
+
 function getBrtNow() {
   return new Intl.DateTimeFormat('pt-BR', {
     timeZone: 'America/Sao_Paulo',
@@ -586,6 +624,12 @@ async function handleTelegramUpdate(update, logger) {
     userText = 'Talita enviou uma imagem no Telegram sem legenda. Responda como Mariah.';
   }
   if (!userText) return;
+
+  // Gatilho: novo cliente / fechamento
+  if (isNovoClienteGatilho(userText)) {
+    acionarOnboarding(userText, msg.chatId, logger).catch(() => {});
+  }
+
   const response = await processMariahText(userText, sourceIsVoice ? 'Audio' : 'Telegram');
 
   // Coordena squad em paralelo — não bloqueia a resposta para Talita
