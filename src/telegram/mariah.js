@@ -29,8 +29,42 @@ const AGENT_CHANNEL_MAP = {
 
 let _slackClient = null;
 
+function isPassandoTrabalhoParaTalita(texto) {
+  const lower = normalizeText(texto);
+  return [
+    'voce precisa verificar', 'voce precisa confirmar', 'voce precisa checar',
+    'voce deve entrar em contato', 'voce pode verificar', 'voce pode confirmar',
+    'sugiro que voce', 'recomendo que voce', 'peço que voce', 'peco que voce',
+    'talita precisa', 'talita deve', 'voce deveria ligar', 'voce deveria enviar',
+  ].some(t => lower.includes(t));
+}
+
 async function detectarEDelegarSquad(userText, mariahResponse, logger) {
   if (!_slackClient) return;
+
+  // Gatilho: Mariah jogou trabalho de volta pra Talita quando podia delegar
+  if (isPassandoTrabalhoParaTalita(mariahResponse)) {
+    try {
+      const correcao = await callClaude(
+        'Você é a Mariah. Identifique o que nessa resposta deveria ir para um agente do squad em vez de voltar para Talita. Retorne JSON: {"agente":"nome do agente dono","tarefa":"o que fazer em 1 frase"}. Se não houver delegação possível, retorne null.',
+        `Resposta problemática: "${mariahResponse.slice(0, 500)}"`,
+        150
+      );
+      const parsed = JSON.parse(correcao.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
+      if (parsed?.agente && parsed?.tarefa) {
+        const key = parsed.agente.toLowerCase().trim();
+        const mapping = AGENT_CHANNEL_MAP[key];
+        if (mapping) {
+          await _slackClient.chat.postMessage({
+            channel: mapping.channel,
+            text: `*Mariah → ${mapping.label}*\n${parsed.tarefa}`,
+          });
+          logger?.info(`[gatilho-redirect] Trabalho redirecionado de Talita → ${mapping.label}`);
+        }
+      }
+    } catch {}
+  }
+
   const lower = mariahResponse.toLowerCase();
   const mencionados = Object.keys(AGENT_CHANNEL_MAP).filter(n => lower.includes(n));
   if (mencionados.length === 0) return;

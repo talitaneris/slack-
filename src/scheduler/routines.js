@@ -752,10 +752,88 @@ let _sharedSlackClient = null;
 function initScheduler(slackClient, logger) {
   _sharedSlackClient = slackClient;
 
-  // ── REATIVA: 8h03 seg-sex — alerta se há algo urgente ──
+  // ── 8h03 seg-sex — leitura de vendas, caixa, suporte e produto ──
   cron.schedule('3 8 * * 1-5', async () => {
-    logger.info('👁 Cron 8h03 — Mariah REATIVA');
+    const chatId = process.env.TELEGRAM_ALLOWED_CHAT_ID;
+    if (!chatId) return;
+    logger.info('📊 Cron 8h03 — leitura vendas/caixa/suporte/produto');
+    try {
+      const memoria = await buildMariahMemoryContext();
+      const milestones = getMilestoneContext();
+      const system = `Você é a Mariah. São 8h03. Gere uma leitura rápida e direta dos 4 blocos do negócio.
+Sem saudação. Sem emoji. Máximo 100 palavras no total.
+Formato obrigatório (4 linhas, uma por bloco):
+Vendas: [status de leads, pipeline, o que está quente ou parado]
+Caixa: [receita confirmada este mês, o que está a vencer, alerta se houver]
+Suporte: [status das mentoradas — alguma trava, urgência ou risco de churn]
+Produto: [o que está pendente em conteúdo, aula, material — o que Paulo precisa]
+Se não há dado concreto num bloco, diga "sem alerta" e siga.
+${memoria}
+${milestones}`;
+      const leitura = await callClaude(system, `Data: ${getBrtDateContext()}`, 300);
+      await sendTelegramMessage(chatId, leitura);
+    } catch (err) {
+      logger.error('[8h03] Erro:', err.message);
+    }
+  }, { timezone: 'America/Sao_Paulo' });
+
+  // ── REATIVA: 8h06 seg-sex — alerta se há algo urgente ──
+  cron.schedule('6 8 * * 1-5', async () => {
+    logger.info('👁 Cron 8h06 — Mariah REATIVA');
     await runReativa(logger).catch(err => logger.error('[reativa] Erro:', err.message));
+  }, { timezone: 'America/Sao_Paulo' });
+
+  // ── 9h00 seg-sex — o que Mariah já identificou e está resolvendo ──
+  cron.schedule('0 9 * * 1-5', async () => {
+    const chatId = process.env.TELEGRAM_ALLOWED_CHAT_ID;
+    if (!chatId) return;
+    logger.info('🔍 Cron 9h00 — Mariah: o que já identifiquei');
+    try {
+      const memoria = await buildMariahMemoryContext();
+      const milestones = getMilestoneContext();
+      const system = `Você é a Mariah. São 9h. Liste o que você já identificou e está resolvendo sem a Talita precisar pedir.
+Seja específica — não genérica. Se não há nada novo identificado além do que já foi dito no briefing, não mande mensagem (retorne string vazia).
+Formato — somente se houver algo concreto:
+Eu já:
+• [ação concreta que Mariah está tomando — quem acionou, o que vai acontecer]
+• ...
+Sem emoji. Sem saudação. Máximo 60 palavras.
+${memoria}
+${milestones}`;
+      const acao = await callClaude(system, `Data: ${getBrtDateContext()}`, 200);
+      const limpo = acao.trim();
+      if (limpo && limpo.length > 10 && !limpo.toLowerCase().includes('string vazia')) {
+        await sendTelegramMessage(chatId, limpo);
+      }
+    } catch (err) {
+      logger.error('[9h00] Erro:', err.message);
+    }
+  }, { timezone: 'America/Sao_Paulo' });
+
+  // ── 10h15 seg-sex — check do dia (3 itens fixos) ──
+  cron.schedule('15 10 * * 1-5', async () => {
+    const chatId = process.env.TELEGRAM_ALLOWED_CHAT_ID;
+    if (!chatId) return;
+    logger.info('✅ Cron 10h15 — check do dia');
+    try {
+      const milestones = getMilestoneContext();
+      const now = new Date();
+      const dayOfWeek = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', timeZone: 'America/Sao_Paulo' }).format(now);
+
+      const system = `Você é a Mariah. São 10h15. Envie o check do dia — 3 itens que a Talita precisa confirmar que fez ou vai fazer hoje.
+Baseie nos 4 focos do negócio e no dia da semana.
+Formato obrigatório:
+Check do dia:
+[ ] [item 1 — ação de venda ou lead]
+[ ] [item 2 — conteúdo ou mini aula]
+[ ] [item 3 — baseado no milestone mais próximo]
+Sem emoji. Sem introdução. Máximo 40 palavras.
+${milestones}`;
+      const check = await callClaude(system, `Hoje é ${dayOfWeek}. ${getBrtDateContext()}`, 150);
+      await sendTelegramMessage(chatId, check);
+    } catch (err) {
+      logger.error('[check-dia] Erro:', err.message);
+    }
   }, { timezone: 'America/Sao_Paulo' });
 
   // ── PROATIVA: quinta 7h30 — dia de gravação ──
@@ -947,11 +1025,21 @@ ${contextoPlanejamento}`;
       } catch {}
 
       const milestones = getMilestoneContext();
+      const dayOfWeek = new Date().getDay();
+      const temReuniao = agendaHoje.toLowerCase().includes('reunião') || agendaHoje.toLowerCase().includes('cliente') || agendaHoje.toLowerCase().includes('call') || agendaHoje.toLowerCase().includes('evento');
+      const temTreino = [1, 3, 5].includes(dayOfWeek); // seg, qua, sex
+      const roupaContexto = temReuniao
+        ? 'Há reunião ou compromisso externo na agenda — sugestão de roupa: algo que passe autoridade e conforto.'
+        : temTreino
+          ? 'Dia de treino — roupa leve para academia antes de qualquer compromisso.'
+          : 'Sem compromisso externo — pode ir confortável.';
+
       const system = `Você é a Mariah, agente executiva da Talita. É 7h da manhã.
-Envie um briefing diário curto, direto e útil. Sem saudação, sem emoji, sem introdução.
+Envie um briefing diário curto, direto e útil. Sem emoji, sem introdução.
 Formato obrigatório:
 Hoje pede:
 Agenda: (lista os eventos do dia ou "agenda limpa")
+Roupa: (1 linha baseada no contexto: ${roupaContexto})
 Pendências em aberto: (só as urgentes ou com prazo próximo da memória — máximo 3)
 Prazos chegando: (use os PRAZOS DO NEGÓCIO abaixo — mencione só os que estão a menos de 21 dias)
 Eu já vou: (o que a Mariah vai fazer sem precisar pedir)
