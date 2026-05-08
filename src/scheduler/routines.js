@@ -902,6 +902,69 @@ ${milestones}`;
     }
   }, { timezone: 'America/Sao_Paulo' });
 
+  // ── 17h30 seg-sex — digest do squad no Telegram ──
+  cron.schedule('30 17 * * 1-5', async () => {
+    const chatId = process.env.TELEGRAM_ALLOWED_CHAT_ID;
+    if (!chatId) return;
+    logger.info('📋 Cron 17h30 — digest do squad para Mariah');
+    try {
+      const memoria = await buildMariahMemoryContext();
+      const milestones = getMilestoneContext();
+      const privateCtx = await getPrivateContextForAgent('assistente').catch(() => '');
+
+      const system = `Você é a Mariah. São 17h30. Gere um digest rápido do squad para a Talita — o que deveria ter avançado hoje e o que precisa de atenção amanhã.
+Não invente resultados que você não pode confirmar. Use o contexto do negócio, os prazos e a memória.
+Sem saudação. Sem emoji. Máximo 120 palavras.
+Formato:
+Squad hoje:
+Jay: [comercial / evento / turmas]
+Lia: [leads / pipeline]
+People: [conteúdo / mini aulas]
+Sofia: [financeiro]
+Mari: [CS mentoradas]
+Amanhã precisa de você: [só o que é decisão real de Talita — se não houver, omita]
+${milestones}
+${memoria}`;
+
+      const digest = await callClaude(system, `Gere o digest do squad de hoje. Data: ${getBrtDateContext()}`, 350);
+      await sendTelegramMessage(chatId, formatForSlack(digest));
+    } catch (err) {
+      logger.error('[digest-squad] Erro:', err.message);
+    }
+  }, { timezone: 'America/Sao_Paulo' });
+
+  // ── 8h20 seg/qua/sex — lembrete de treino ──
+  cron.schedule('20 8 * * 1,3,5', async () => {
+    const chatId = process.env.TELEGRAM_ALLOWED_CHAT_ID;
+    if (!chatId) return;
+    await sendTelegramMessage(chatId, 'Treino em 10 minutos.').catch(() => {});
+    logger.info('[saude] Lembrete de treino enviado');
+  }, { timezone: 'America/Sao_Paulo' });
+
+  // ── 17h toda sexta — fim de expediente, sexta é folga ──
+  cron.schedule('0 17 * * 5', async () => {
+    const chatId = process.env.TELEGRAM_ALLOWED_CHAT_ID;
+    if (!chatId) return;
+    await sendTelegramMessage(chatId, 'Fecha o computador. Sexta é sua.').catch(() => {});
+    logger.info('[saude] Lembrete fim de expediente sexta enviado');
+  }, { timezone: 'America/Sao_Paulo' });
+
+  // ── 13h seg-sex — pausa e hidratação ──
+  cron.schedule('0 13 * * 1-5', async () => {
+    const chatId = process.env.TELEGRAM_ALLOWED_CHAT_ID;
+    if (!chatId) return;
+    const lembretes = [
+      'Bebeu água hoje?',
+      'Para 5 minutos antes de continuar.',
+      'Almoçou?',
+      'Longe da tela por 5 minutos.',
+      'Hidratação e respiração antes de voltar.',
+    ];
+    const msg = lembretes[new Date().getDay() % lembretes.length];
+    await sendTelegramMessage(chatId, msg).catch(() => {});
+    logger.info('[saude] Lembrete 13h enviado');
+  }, { timezone: 'America/Sao_Paulo' });
+
   // ── Meia-noite BRT diário — limpeza da fila inter-agente ──
   cron.schedule('0 0 * * *', () => {
     try {
@@ -914,7 +977,7 @@ ${milestones}`;
     }
   }, { timezone: 'America/Sao_Paulo' });
 
-  logger.info('🗓️ Scheduler iniciado — 6h curadoria+pautas | 6h30 briefing | 8h rotinas+stories | 9h30 seg conselho | 18h métricas | 18h45 seg zoom-tribus | 0h cleanup');
+  logger.info('🗓️ Scheduler iniciado — 6h pautas | 6h30 briefing | 8h rotinas+stories | 8h20 seg/qua/sex treino | 9h30 seg conselho | 10h seg cobrança-jay | 13h pausa | 17h sex fecha-computador | 17h30 digest-squad | 18h métricas | 18h45 seg zoom | 20h pauta | 0h cleanup');
 }
 
 module.exports = { initScheduler, runStoriesApprovalRoutine };
