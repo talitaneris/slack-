@@ -91,7 +91,7 @@ receiver.router.get('/sistemadeconteudo', (req, res) => {
    
   // Registra os endpoints de webhook no receiver Express                                                        
   registerWebhooks(receiver, app.client, console);
-  registerTelegramMariah(receiver, console);
+  registerTelegramMariah(receiver, console, app.client);
   registerGoogleOAuth(receiver, console);
   registerZoomWebhook(receiver, console);
 

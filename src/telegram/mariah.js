@@ -11,6 +11,55 @@ const { criarReuniaoZoom, isZoomConfigured } = require('../services/zoom');
 
 const TELEGRAM_API = 'https://api.telegram.org';
 
+// ─── COORDENAÇÃO COM O SQUAD ──────────────────────────────────
+
+const AGENT_CHANNEL_MAP = {
+  nara:   { channel: 'C0AN20EFA02', label: 'Nara' },
+  jay:    { channel: 'C03PX3KKTJS', label: 'Jay' },
+  sofia:  { channel: 'C0AMZU5RFM4', label: 'Sofia' },
+  people: { channel: 'C0AMR167B4L', label: 'People' },
+  vega:   { channel: 'C0AMR167B4L', label: 'Vega' },
+  lia:    { channel: 'C0AMJ13D85T', label: 'Lia' },
+  mari:   { channel: 'C0AMR126AN8', label: 'Mari' },
+  paulo:  { channel: 'C0AMR126AN8', label: 'Paulo' },
+  alex:   { channel: 'C0AMR167B4L', label: 'Alex' },
+  lens:   { channel: 'C03PX3KKTJS', label: 'Lens' },
+  marta:  { channel: 'C0AN20EFA02', label: 'Marta' },
+};
+
+let _slackClient = null;
+
+async function detectarEDelegarSquad(userText, mariahResponse, logger) {
+  if (!_slackClient) return;
+  const lower = mariahResponse.toLowerCase();
+  const mencionados = Object.keys(AGENT_CHANNEL_MAP).filter(n => lower.includes(n));
+  if (mencionados.length === 0) return;
+
+  try {
+    const raw = await callClaude(
+      'Você extrai delegações reais de respostas da Mariah. Retorne apenas JSON válido, sem markdown.',
+      `Mensagem da Talita: "${userText.slice(0, 300)}"\nResposta da Mariah: "${mariahResponse.slice(0, 600)}"\n\nExtrai apenas delegações reais para o squad. Se a menção for só contextual (ex: "Nara já resolveu"), ignore.\nRetorne JSON: [{"agente":"nome","tarefa":"o que fazer em 1 frase direta"}]\nSe não há delegação real, retorne [].`,
+      250
+    );
+    const json = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const delegacoes = JSON.parse(json);
+    if (!Array.isArray(delegacoes)) return;
+
+    for (const d of delegacoes) {
+      const key = (d.agente || '').toLowerCase().trim();
+      const mapping = AGENT_CHANNEL_MAP[key];
+      if (!mapping || !d.tarefa) continue;
+      await _slackClient.chat.postMessage({
+        channel: mapping.channel,
+        text: `*Mariah → ${mapping.label}*\n${d.tarefa}`,
+      });
+      logger?.info(`[mariah-coord] → ${mapping.label}: ${String(d.tarefa).slice(0, 80)}`);
+    }
+  } catch (err) {
+    logger?.warn('[mariah-coord] Erro ao coordenar squad:', err.message);
+  }
+}
+
 function getBrtNow() {
   return new Intl.DateTimeFormat('pt-BR', {
     timeZone: 'America/Sao_Paulo',
@@ -537,6 +586,10 @@ async function handleTelegramUpdate(update, logger) {
   }
   if (!userText) return;
   const response = await processMariahText(userText, sourceIsVoice ? 'Audio' : 'Telegram');
+
+  // Coordena squad em paralelo — não bloqueia a resposta para Talita
+  detectarEDelegarSquad(userText, response, logger).catch(() => {});
+
   const useVoice = shouldRespondWithVoice(userText, sourceIsVoice);
   if (useVoice) {
     try {
@@ -551,8 +604,9 @@ async function handleTelegramUpdate(update, logger) {
   }
 }
 
-function registerTelegramMariah(receiver, logger) {
+function registerTelegramMariah(receiver, logger, slackClient) {
   if (!logger) logger = console;
+  if (slackClient) _slackClient = slackClient;
 
   receiver.router.get('/telegram/status', function(req, res) {
     res.json({
