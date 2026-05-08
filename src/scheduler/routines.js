@@ -267,7 +267,14 @@ Instrução para Alex: formato visual, referência objetiva`,
     {
       agent: AGENTS.jay,
       channel: CHANNELS.vendas,
-      prompt: `Defina a prioridade comercial da semana: produto a impulsionar (A Tribus mentoria), foco em leads F1 (impulsionamento) ou R1 (indicação), meta de receita semanal, e direção específica para Lia e Marta. Máximo 180 palavras.`,
+      prompt: `É segunda-feira. Defina a prioridade comercial da semana partindo da realidade atual do negócio e dos 4 focos definidos:
+1. Evento — o que avançou? Qual o próximo passo concreto esta semana?
+2. 3 turmas de 10 pessoas — quantas pessoas encaminhadas? O que trava?
+3. Mini aulas no Instagram — saíram? Quantas? O que Paulo e People precisam fazer?
+4. Aula para 2 pessoas — alguma vendida? Preço e formato já definidos?
+
+Regra: partir do que existe, não do que gostaríamos de ter. Realidade atual: ~R$15k/mês, 17 mentoradas ativas, caixa pressionado.
+Formato: Foco da semana / O que Jay vai entregar / O que Lia faz / O que Marta faz / O mínimo que Talita decide. Máximo 180 palavras.`,
       maxTokens: 400,
     },
     {
@@ -681,6 +688,42 @@ Feche com:
 → *3 ações táticas para executar antes da próxima segunda*
 → *1 número para monitorar*`,
     }, slackClient, logger);
+  }, { timezone: 'America/Sao_Paulo' });
+
+  // ── 10h toda segunda — Mariah cobra Jay no Telegram: status dos 4 focos ──
+  cron.schedule('0 10 * * 1', async () => {
+    const chatId = process.env.TELEGRAM_ALLOWED_CHAT_ID;
+    if (!chatId) return;
+    logger.info('📋 Cron 10h segunda — Mariah cobra Jay nos 4 focos');
+    try {
+      const memoria = await buildMariahMemoryContext();
+      const contextoPlanejamento = await getPrivateContextForAgent('assistente');
+
+      const system = `Você é a Mariah, agente executiva da Talita.
+É segunda-feira, 10h. Jay acabou de rodar o Conselho Estratégico.
+Você monitora o progresso de Jay nos 4 focos do negócio.
+
+Os 4 focos são:
+1. Evento — captação e venda. Tem data? Oferta estruturada? Roteiro pronto?
+2. 3 turmas de 10 pessoas — primeira turma com data? Meta de inscritos em andamento?
+3. Mini aulas no Instagram — saindo com frequência? Paulo definiu roteiro?
+4. Aula para 2 pessoas — formato e preço definidos?
+
+Gere uma cobrança honesta para a Talita — sem relatório, sem introdução.
+Formato:
+Jay esta semana: [o que está avançando]
+Travado: [o que não andou]
+Eu já cobrei: [o que Mariah vai acionar agora]
+Depende de você: [só se houver decisão que só Talita toma]
+Máximo 80 palavras. Sem saudação. Sem emoji.
+${memoria}
+${contextoPlanejamento}`;
+
+      const cobranca = await callClaude(system, 'Gere o status de Jay nos 4 focos desta semana.', 300);
+      await sendTelegramMessage(chatId, cobranca);
+    } catch (err) {
+      logger.error('[cobrança-jay] Erro:', err.message);
+    }
   }, { timezone: 'America/Sao_Paulo' });
 
   // ── 18h BRT diário — Lens resume as métricas do dia ──
