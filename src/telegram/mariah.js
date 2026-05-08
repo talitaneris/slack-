@@ -16,15 +16,12 @@ const TELEGRAM_API = 'https://api.telegram.org';
 const AGENT_CHANNEL_MAP = {
   nara:   { channel: 'C0AN20EFA02', label: 'Nara' },
   jay:    { channel: 'C03PX3KKTJS', label: 'Jay' },
-  sofia:  { channel: 'C0AMZU5RFM4', label: 'Sofia' },
   people: { channel: 'C0AMR167B4L', label: 'People' },
   vega:   { channel: 'C0AMR167B4L', label: 'Vega' },
   lia:    { channel: 'C0AMJ13D85T', label: 'Lia' },
   mari:   { channel: 'C0AMR126AN8', label: 'Mari' },
   paulo:  { channel: 'C0AMR126AN8', label: 'Paulo' },
   alex:   { channel: 'C0AMR167B4L', label: 'Alex' },
-  lens:   { channel: 'C03PX3KKTJS', label: 'Lens' },
-  marta:  { channel: 'C0AN20EFA02', label: 'Marta' },
 };
 
 let _slackClient = null;
@@ -361,7 +358,7 @@ async function buildMariahSystem() {
     'MANDATO — ALCADAS DE DECISAO:',
     'FAZ SOZINHA (rotina, triagem, padrao conhecido): filtrar email, organizar agenda, preparar contexto do dia, resumos, checklist, cobrar squad, link Zoom, registrar memoria, dizer "isso nao precisa de voce".',
     'AVISA ANTES (impacto medio ou envolve terceiro): reagendar com cliente, responder em nome da Talita, aprovar conteudo, envolver lead ou parceiro, qualquer acao que gere expectativa em outra pessoa.',
-    'FAZ COM SOFIA (financeiro operacional): controle bancario, fluxo de caixa, conciliacao, pagamentos recorrentes, fechamento mensal. Mariah organiza e aciona Sofia. Reporta a Talita so o que exigir decisao.',
+    'FINANCEIRO OPERACIONAL: controle bancario, fluxo de caixa, conciliacao, pagamentos recorrentes, fechamento mensal. Mariah organiza e apresenta resumo claro. Reporta a Talita so o que exigir decisao.',
     'NAO TOCA (estrategico, pessoal — sao dela): contratar, demitir, assinar contrato, posicionamento publico, oferta, preco, decisao de produto, resposta sensivel a mentorada em crise.',
     '',
     'IMPORTANTE: Voce TEM acesso ao email da Talita via Zoho Mail API e ao Google Calendar.',
@@ -513,10 +510,13 @@ async function buildManualBriefingPrompt() {
 }
 
 function isZoomRequest(text) {
-  const lower = text.toLowerCase();
-  if (lower.includes('zoom')) return true;
-  if (lower.includes('link') && (lower.includes('reuniao') || lower.includes('reunião') || lower.includes('meeting'))) return true;
-  if ((lower.includes('criar') || lower.includes('gera') || lower.includes('abre')) && (lower.includes('reuniao') || lower.includes('reunião') || lower.includes('meeting'))) return true;
+  const lower = normalizeText(text);
+  const criacaoVerbs = ['criar', 'cria', 'crie', 'gera', 'gerar', 'abre', 'abrir', 'faz', 'fazer', 'manda', 'mandar', 'preciso de um', 'preciso de link', 'me manda', 'me faz', 'me cria'];
+  const zoomWords = ['zoom', 'link de reuniao', 'link da reuniao', 'link para reuniao', 'link reuniao', 'reuniao online', 'meeting link'];
+  const temCriacao = criacaoVerbs.some(v => lower.includes(v));
+  const temZoom = zoomWords.some(w => lower.includes(w));
+  if (temCriacao && temZoom) return true;
+  if (lower.includes('link') && (lower.includes('reuniao') || lower.includes('meeting')) && temCriacao) return true;
   return false;
 }
 

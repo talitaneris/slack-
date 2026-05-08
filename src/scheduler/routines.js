@@ -165,22 +165,6 @@ async function buildMariahMorningInboxContext(logger = console) {
 // Rotinas diárias — rodam todo dia às 8h BRT
 const DAILY_ROUTINES = [
   {
-    agent: AGENTS.assistente,
-    channel: CHANNELS.talita,
-    prompt: `Gere o resumo da manhã para Talita usando obrigatoriamente os blocos AGENDA ATUAL DE HOJE e E-MAILS DA MANHA que vêm abaixo. Use a data atual do sistema. Não peça a data. Não use lembretes antigos de Brenda/Carol se não estiverem no contexto atual.
-Regra central: Google Calendar ao vivo e Zoho Mail sao fontes da verdade. Não use rotina fixa como fato.
-Não use emoji. Não coloque título com "Mariah", "Briefing Mariah" ou nome de agente.
-Formato:
-Leitura: 1 frase sobre o dia citando os blocos da agenda.
-Agenda atual: liste os principais compromissos em linhas curtas.
-Inbox: e-mails importantes da noite/manha, agrupados por decisao, risco ou oportunidade. Se Zoho nao estiver configurado, diga acesso pendente em 1 linha.
-Proteção: qual bloco do dia precisa ser protegido.
-Decisão: só o que depende de Talita hoje.
-Eu ja vou: o que Mariah/Nara/agente dono vai resolver sem devolver para Talita.
-Proibido: dizer agenda livre, treino fixo, aula fixa ou dia protegido se isso não aparecer no bloco AGENDA ATUAL DE HOJE. Proibido fingir que leu e-mail se o Zoho nao estiver configurado.`,
-    maxTokens: 550,
-  },
-  {
     agent: AGENTS.nara,
     channel: CHANNELS.squadgeral,
     prompt: `Abra o dia do squad como Nara. Não invente status por área.
@@ -209,22 +193,11 @@ Alex: briefing visual em 1 linha.`,
   {
     agent: AGENTS.lia,
     channel: CHANNELS.vendas,
-    prompt: `Defina o foco de vendas do dia sem inventar ICP, meta ou lead. A realidade atual é operação pequena. Se não houver pipeline atualizado, acione Marta/Nara.
+    prompt: `Defina o foco de vendas do dia sem inventar ICP, meta ou lead. A realidade atual é operação pequena. Se não houver pipeline atualizado, acione Nara.
 Formato:
 Prioridade: 1 ação comercial de hoje.
 Abordagem: 1 mensagem curta, sem "faz sentido?".
-Dono: Lia/Marta/Nara.`,
-    maxTokens: 350,
-  },
-  {
-    agent: AGENTS.marta,
-    channel: CHANNELS.vendas,
-    prompt: `Gere snapshot do pipeline somente com dados confirmados. Se não houver base conectada, diga que pipeline não está confiável ainda e acione Nara para organizar WhatsApp comercial + planilha.
-Nunca use [Nome Lead A] nem números inventados.
-Formato:
-Fato: [confirmado ou lacuna]
-Risco: [impacto comercial]
-Ação: [quem atualiza e onde]`,
+Pipeline: confirme estágio dos leads ativos ou sinalize lacuna.`,
     maxTokens: 350,
   },
   {
@@ -243,16 +216,6 @@ Dono: [Paulo, Mari ou Nara]`,
 // Rotinas por dia da semana (além das diárias)
 const WEEKLY_ROUTINES = {
   1: [ // Segunda-feira
-    {
-      agent: AGENTS.sofia,
-      channel: CHANNELS.financeiro,
-      prompt: `Lista de A RECEBER da semana — máximo 120 palavras, sem emojis por linha.
-Liste quem paga esta semana, valor e data de vencimento. Separa: confirmados vs pendentes.
-Calendário fixo: Renata (dia 5, R$1.200), Patricia (dia 10), Damaris (dia 25, R$1.000), Elis (dia 28), Carol (10/04), Brenda (07/04).
-Se algum vencimento cair nesta semana: destaque como prioritário.
-Se Eli+Aparicio ainda não fecharam renovação: incluir como pendência.`,
-      maxTokens: 300,
-    },
     {
       agent: AGENTS.vega,
       channel: CHANNELS.marketing,
@@ -274,15 +237,8 @@ Instrução para Alex: formato visual, referência objetiva`,
 4. Aula para 2 pessoas — alguma vendida? Preço e formato já definidos?
 
 Regra: partir do que existe, não do que gostaríamos de ter. Realidade atual: ~R$15k/mês, 17 mentoradas ativas, caixa pressionado.
-Formato: Foco da semana / O que Jay vai entregar / O que Lia faz / O que Marta faz / O mínimo que Talita decide. Máximo 180 palavras.`,
+Formato: Foco da semana / O que Jay vai entregar / O que Lia faz / O mínimo que Talita decide. Máximo 180 palavras.`,
       maxTokens: 400,
-    },
-    {
-      agent: AGENTS.lens,
-      channel: CHANNELS.gestao,
-      prompt: `Analise métricas de abertura de semana apenas se houver dados confirmados. Se não houver acesso, não peça print para Talita: acione Nara para organizar Instagram/Meta/funil.
-Formato: Fato / Lacuna / Ação com dono. Máximo 90 palavras.`,
-      maxTokens: 450,
     },
   ],
   2: [ // Terça-feira
@@ -295,35 +251,25 @@ Formato: Fato / Lacuna / Ação com dono. Máximo 90 palavras.`,
   ],
   3: [ // Quarta-feira
     {
-      agent: AGENTS.lens,
+      agent: AGENTS.jay,
       channel: CHANNELS.gestao,
-      prompt: `Execute o mid-week check sem inventar métrica. Se não houver acesso a Instagram/TikTok/funil, registre lacuna e acione Nara.
-Formato: Fato / Lacuna / Ação com dono. Máximo 90 palavras.`,
-      maxTokens: 450,
+      prompt: `Mid-week check dos 4 focos — sem inventar métrica ou dado.
+Evento: está avançando? O que travou esta semana?
+Turmas: leads encaminhados? Lia reportou algo?
+Mini aulas: saíram?
+Aula 2 pessoas: algum movimento?
+Se faltar dado, sinalize lacuna e acione Nara/Lia. Máximo 90 palavras.`,
+      maxTokens: 300,
     },
   ],
   5: [ // Sexta-feira
     {
       agent: AGENTS.jay,
       channel: CHANNELS.gestao,
-      prompt: `Gere dashboard semanal de receita somente com dados confirmados. Sem tabela. Se faltar pipeline/receita, acione Nara/Sofia/Marta e entregue decisão provisória. Máximo 100 palavras.`,
-      maxTokens: 500,
-    },
-    {
-      agent: AGENTS.sofia,
-      channel: CHANNELS.financeiro,
-      prompt: `Fechamento financeiro da semana — máximo 150 palavras, sem emojis por linha.
-1. O que foi pago esta semana vs o que estava previsto (confirmado / pendente / atrasado)
-2. Vendas da semana: novos contratos fechados (nome, produto, valor) — se não houve, diz zero
-3. Alerta de inadimplência se houver
-Calendário: Renata (dia 5, R$1.200), Patricia (dia 10), Damaris (dia 25, R$1.000 — 1ª parcela 25/03), Elis (dia 28), Carol (10/04), Brenda (07/04).
-Se algum contrato de renovação continuar pendente (Eli+Aparicio, Thaissa): cobrar status.`,
-      maxTokens: 400,
-    },
-    {
-      agent: AGENTS.lens,
-      channel: CHANNELS.gestao,
-      prompt: `Feche a semana com métricas apenas se houver dados confirmados. Se faltar acesso, acione Nara e diga a lacuna. Formato: Fato / Risco / Ação. Máximo 90 palavras.`,
+      prompt: `Dashboard de fechamento semanal — somente dados confirmados. Sem tabela.
+Receita da semana: confirmada vs prevista.
+Status dos 4 focos: o que avançou, o que travou.
+Se faltar dado, acione Nara/Lia e entregue decisão provisória. Máximo 120 palavras.`,
       maxTokens: 400,
     },
   ],
@@ -959,16 +905,6 @@ ${contextoPlanejamento}`;
     }
   }, { timezone: 'America/Sao_Paulo' });
 
-  // ── 18h BRT diário — Lens resume as métricas do dia ──
-  cron.schedule('0 18 * * *', async () => {
-    logger.info('📈 Cron 18h — Lens resumindo métricas do dia');
-    await runRoutine({
-      agent:     AGENTS.lens,
-      channel:   CHANNELS.gestao,
-      maxTokens: 350,
-      prompt:    'Lens, fim de tarde. Faça um resumo das métricas do dia: o que se destacou positivamente, o que ficou abaixo do esperado, e 1 ajuste para amanhã. Máximo 150 palavras.',
-    }, slackClient, logger);
-  }, { timezone: 'America/Sao_Paulo' });
 
   // ── 6h30 BRT diário — Nara lê a fila e gera briefing consolidado ──
   cron.schedule('30 6 * * *', async () => {
@@ -1163,7 +1099,6 @@ Squad hoje:
 Jay: [comercial / evento / turmas]
 Lia: [leads / pipeline]
 People: [conteúdo / mini aulas]
-Sofia: [financeiro]
 Mari: [CS mentoradas]
 Amanhã precisa de você: [só o que é decisão real de Talita — se não houver, omita]
 ${milestones}

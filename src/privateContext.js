@@ -30,10 +30,7 @@ const AGENT_DOCS = {
     '07-produto/atribus-oferta.md',
     '07-produto/atribus-icp.md',
     '02-empresa/objetivos-empresa.md',
-  ],
-  sofia: [
-    '06-financeiro/diagnostico-financeiro.md',
-    '06-financeiro/contratos-ativos.md',
+    '05-squad/canais-agentes.md',
   ],
   mari: [
     '04-mentoria/jornada-d0-d180.md',
@@ -52,11 +49,6 @@ const AGENT_DOCS = {
     '07-produto/atribus-oferta.md',
     '07-produto/atribus-icp.md',
     '02-empresa/objetivos-empresa.md',
-  ],
-  marta: [
-    '07-produto/atribus-oferta.md',
-    '07-produto/atribus-icp.md',
-    '06-financeiro/diagnostico-financeiro.md',
   ],
   vega: [
     '00-identidade/talita-identidade.md',
@@ -82,10 +74,6 @@ const AGENT_DOCS = {
   paulo: [
     '02-empresa/atribus-metodo.md',
     '07-produto/atribus-oferta.md',
-  ],
-  lens: [
-    '06-financeiro/diagnostico-financeiro.md',
-    '05-squad/canais-agentes.md',
   ],
   assistente: [
     '05-squad/mariah-agente-executiva.md',

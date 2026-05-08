@@ -68,13 +68,13 @@ function registerWebhooks(receiver, slackClient, logger) {
       }
 
       const payload = req.body || {};
-      const taskId  = enqueue('webhook', 'lens', 'analisar_metricas', payload);
+      const taskId  = enqueue('webhook', 'jay', 'analisar_metricas', payload);
 
       // Alerta no canal de alertas
       try {
         await slackClient.chat.postMessage({
           channel: CHANNELS.alertas,
-          text: `📊 *Métricas recebidas via webhook*\nLens vai analisar os dados enviados.\n_Task ID: ${taskId}_`,
+          text: `📊 *Métricas recebidas via webhook*\nJay vai analisar os dados enviados.\n_Task ID: ${taskId}_`,
         });
       } catch (slackErr) {
         logger.error('Erro ao postar alerta de métricas no Slack:', slackErr.message);
