@@ -530,7 +530,8 @@ async function handleTelegramUpdate(update, logger) {
       sourceIsVoice = true;
     } catch (err) {
       logger.error('Erro ao transcrever audio:', err.message);
-      userText = 'Talita enviou um audio mas nao consegui transcrever. Me conta o que era?';
+      await sendTelegramMessage(msg.chatId, 'Não consegui transcrever. Pode mandar em texto?');
+      return;
     }
   }
   if (!userText && msg.hasPhoto) {
