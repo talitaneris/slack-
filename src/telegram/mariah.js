@@ -101,9 +101,8 @@ async function sendTelegramVoice(chatId, audioBuffer) {
   return response.json();
 }
 
-async function textToSpeech(text) {
-  const googleKey = process.env.GOOGLE_CLOUD_API_KEY || process.env.GOOGLE_API_KEY;
-  const spokenText = text
+function cleanTextForSpeech(text) {
+  return text
     .replace(/\*\*(.*?)\*\*/g, '$1')
     .replace(/\*(.*?)\*/g, '$1')
     .replace(/^[-•]\s*/gm, '')
@@ -111,31 +110,80 @@ async function textToSpeech(text) {
     .replace(/\n{2,}/g, '. ')
     .replace(/\n/g, ', ')
     .trim();
+}
 
+async function convertMp3ToOgg(mp3Buffer) {
+  const { spawn } = require('child_process');
+  return new Promise((resolve, reject) => {
+    const ff = spawn('ffmpeg', [
+      '-i', 'pipe:0',
+      '-c:a', 'libopus',
+      '-b:a', '64k',
+      '-f', 'ogg',
+      'pipe:1',
+    ]);
+    const chunks = [];
+    ff.stdout.on('data', chunk => chunks.push(chunk));
+    ff.stdout.on('end', () => resolve(Buffer.concat(chunks)));
+    ff.stderr.on('data', () => {});
+    ff.on('error', reject);
+    ff.stdin.write(mp3Buffer);
+    ff.stdin.end();
+  });
+}
+
+async function textToSpeechElevenLabs(spokenText) {
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+  const voiceId = process.env.ELEVENLABS_VOICE_ID || 'EXAVITQu4vr4xnSDxMaL'; // Sarah
+
+  const response = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+    {
+      method: 'POST',
+      headers: {
+        'xi-api-key': apiKey,
+        'Content-Type': 'application/json',
+        Accept: 'audio/mpeg',
+      },
+      body: JSON.stringify({
+        text: spokenText.slice(0, 5000),
+        model_id: 'eleven_multilingual_v2',
+        voice_settings: { stability: 0.45, similarity_boost: 0.80 },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const err = await response.text().catch(() => '');
+    throw new Error(`ElevenLabs TTS falhou: ${response.status} ${err.slice(0, 200)}`);
+  }
+
+  const mp3Buffer = Buffer.from(await response.arrayBuffer());
+  return convertMp3ToOgg(mp3Buffer);
+}
+
+async function textToSpeechGoogle(spokenText) {
+  const googleKey = process.env.GOOGLE_CLOUD_API_KEY || process.env.GOOGLE_API_KEY;
   const body = {
     input: { text: spokenText.slice(0, 4000) },
-    voice: {
-      languageCode: 'pt-BR',
-      name: 'pt-BR-Neural2-C',
-      ssmlGender: 'FEMALE',
-    },
-    audioConfig: {
-      audioEncoding: 'OGG_OPUS',
-    },
+    voice: { languageCode: 'pt-BR', name: 'pt-BR-Neural2-C', ssmlGender: 'FEMALE' },
+    audioConfig: { audioEncoding: 'OGG_OPUS' },
   };
   const response = await fetch(
     `https://texttospeech.googleapis.com/v1/text:synthesize?key=${googleKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    }
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
   );
   const data = await response.json();
-  if (!response.ok) {
-    throw new Error(`TTS falhou: ${JSON.stringify(data).slice(0, 200)}`);
-  }
+  if (!response.ok) throw new Error(`Google TTS falhou: ${JSON.stringify(data).slice(0, 200)}`);
   return Buffer.from(data.audioContent, 'base64');
+}
+
+async function textToSpeech(text) {
+  const spokenText = cleanTextForSpeech(text);
+  if (process.env.ELEVENLABS_API_KEY) {
+    return textToSpeechElevenLabs(spokenText);
+  }
+  return textToSpeechGoogle(spokenText);
 }
 
 function shouldRespondWithVoice(userText, sourceIsVoice) {
