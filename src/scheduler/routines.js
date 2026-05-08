@@ -616,10 +616,165 @@ async function runRoutine(routine, slackClient, logger) {
   }
 }
 
+// ─── REATIVA: alerta quando algo exige atenção ───────────────
+async function runReativa(logger) {
+  const chatId = process.env.TELEGRAM_ALLOWED_CHAT_ID;
+  if (!chatId) return;
+
+  const alertas = [];
+
+  // Milestones urgentes (≤ 7 dias)
+  const milestones = getMilestoneContext();
+  const urgentes = (milestones.match(/• (.+?): (\d+) dia/g) || [])
+    .filter(m => {
+      const dias = parseInt(m.match(/(\d+) dia/)?.[1] || '99');
+      return dias <= 7;
+    });
+  if (urgentes.length) {
+    alertas.push('Prazo crítico:\n' + urgentes.map(u => u.replace('• ', '- ')).join('\n'));
+  }
+
+  // Agenda de hoje — reuniões sem pauta ou de alto impacto
+  try {
+    const { start, end } = getBrtTodayRange();
+    const eventos = await listarEventos(start, end);
+    const altoImpacto = eventos.filter(e =>
+      e.summary && ['lead', 'cliente', 'venda', 'proposta', 'fechamento', 'negoci'].some(k =>
+        e.summary.toLowerCase().includes(k)
+      )
+    );
+    if (altoImpacto.length) {
+      alertas.push('Hoje tem reunião comercial:\n' + altoImpacto.map(e => `- ${e.summary}`).join('\n') + '\nLia está avisada?');
+    }
+  } catch {}
+
+  if (alertas.length === 0) return; // nada urgente — silêncio
+
+  const memoria = await buildMariahMemoryContext();
+  const system = `Você é a Mariah, modo REATIVA. São 8h. Há alertas que precisam de atenção agora.
+Seja direta e breve. Máximo 80 palavras. Sem saudação. Sem emoji.
+Formato: [alerta] / O que precisa acontecer / Quem resolve
+${memoria}`;
+
+  const msg = await callClaude(system, `Alertas de hoje:\n${alertas.join('\n\n')}`, 250);
+  await sendTelegramMessage(chatId, msg);
+  logger.info('[reativa] Alerta enviado');
+}
+
+// ─── PROATIVA: age sem ser pedida ────────────────────────────
+async function runProativa(tipo, slackClient, logger) {
+  const chatId = process.env.TELEGRAM_ALLOWED_CHAT_ID;
+
+  if (tipo === 'quinta-gravacao') {
+    // Quinta é dia de gravação — squad já sabe o que fazer?
+    if (_sharedSlackClient) {
+      const system = await buildRoutineSystem(AGENTS.paulo);
+      const texto = formatForSlack(await callClaude(
+        system,
+        'É quinta-feira, dia de gravação da Talita. Qual é o conteúdo previsto para hoje? Entregue o roteiro ou estrutura do que vai ser gravado. Se não há roteiro definido, aponte o tema mais urgente com base nos 4 focos do negócio. Máximo 120 palavras.',
+        300
+      ));
+      await _sharedSlackClient.chat.postMessage({ channel: CHANNELS.produto, text: `*Paulo* — dia de gravação\n${texto}` });
+    }
+    if (chatId) {
+      await sendTelegramMessage(chatId, 'Hoje é quinta — dia de gravação. Paulo já abriu o roteiro no #produto.');
+    }
+    logger.info('[proativa] Quinta gravação acionada');
+  }
+
+  if (tipo === 'quarta-leads') {
+    // Quarta-feira: check de leads para Turma 1
+    if (_sharedSlackClient) {
+      const system = await buildRoutineSystem(AGENTS.lia);
+      const milestones = getMilestoneContext();
+      const texto = formatForSlack(await callClaude(
+        system,
+        `É quarta-feira. Faça um check dos leads para a Turma 1 da A Base (início 09/06). Quantos foram abordados? Quantos estão quentes? O que trava? O que Lia faz hoje para avançar? Máximo 100 palavras.\n${milestones}`,
+        250
+      ));
+      await _sharedSlackClient.chat.postMessage({ channel: CHANNELS.vendas, text: `*Lia* — check de leads Turma 1\n${texto}` });
+    }
+    logger.info('[proativa] Quarta leads check acionado');
+  }
+}
+
+// ─── PREDITIVA: antecipa riscos antes de virarem problema ────
+async function runPreditiva(logger) {
+  const chatId = process.env.TELEGRAM_ALLOWED_CHAT_ID;
+  if (!chatId) return;
+
+  const memoria = await buildMariahMemoryContext();
+  const milestones = getMilestoneContext();
+  const privateCtx = await getPrivateContextForAgent('assistente').catch(() => '');
+
+  // Semana à frente
+  const amanha = new Date();
+  amanha.setDate(amanha.getDate() + 1);
+  const semanaFim = new Date();
+  semanaFim.setDate(semanaFim.getDate() + 8);
+  let calendarioSemana = '';
+  try {
+    const eventos = await listarEventos(amanha.toISOString(), semanaFim.toISOString());
+    if (eventos.length) {
+      calendarioSemana = 'Agenda da semana:\n' + eventos.map(e => `• ${e.summary}`).join('\n');
+      if (eventos.length > 6) calendarioSemana += '\n\nATENÇÃO: semana com mais de 6 compromissos — risco de sobrecarga.';
+    }
+  } catch {}
+
+  const system = `Você é a Mariah, modo PREDITIVA. É domingo à noite. Analise os dados e antecipe os riscos da semana que vem.
+
+Analise:
+1. Milestones próximos — o que está em risco pelo tempo restante?
+2. Agenda — semana cheia demais? Algum bloqueio de proteção em risco?
+3. Padrões de comportamento comercial — o que pode estar atrasando?
+4. O que Talita vai precisar antes de precisar pedir?
+
+Formato:
+Semana que vem pede:
+Risco principal: [o que pode travar]
+Ação preventiva: [o que Mariah já vai fazer]
+Decisão sua: [só se houver — senão omite]
+
+Sem saudação. Sem emoji. Máximo 120 palavras.
+${memoria}
+${milestones}`;
+
+  const analise = await callClaude(system, `${calendarioSemana}\n\n${privateCtx.slice(0, 1500)}`, 400);
+  await sendTelegramMessage(chatId, analise);
+  logger.info('[preditiva] Análise semanal enviada');
+}
+
+let _sharedSlackClient = null;
+
 /**
  * Inicializa o scheduler.
  */
 function initScheduler(slackClient, logger) {
+  _sharedSlackClient = slackClient;
+
+  // ── REATIVA: 8h03 seg-sex — alerta se há algo urgente ──
+  cron.schedule('3 8 * * 1-5', async () => {
+    logger.info('👁 Cron 8h03 — Mariah REATIVA');
+    await runReativa(logger).catch(err => logger.error('[reativa] Erro:', err.message));
+  }, { timezone: 'America/Sao_Paulo' });
+
+  // ── PROATIVA: quinta 7h30 — dia de gravação ──
+  cron.schedule('30 7 * * 4', async () => {
+    logger.info('🎬 Cron 7h30 quinta — Mariah PROATIVA: gravação');
+    await runProativa('quinta-gravacao', slackClient, logger).catch(err => logger.error('[proativa] Erro:', err.message));
+  }, { timezone: 'America/Sao_Paulo' });
+
+  // ── PROATIVA: quarta 9h — check de leads Turma 1 ──
+  cron.schedule('0 9 * * 3', async () => {
+    logger.info('📞 Cron 9h quarta — Mariah PROATIVA: leads');
+    await runProativa('quarta-leads', slackClient, logger).catch(err => logger.error('[proativa] Erro:', err.message));
+  }, { timezone: 'America/Sao_Paulo' });
+
+  // ── PREDITIVA: domingo 20h — análise da semana ──
+  cron.schedule('0 20 * * 0', async () => {
+    logger.info('🔮 Cron 20h domingo — Mariah PREDITIVA');
+    await runPreditiva(logger).catch(err => logger.error('[preditiva] Erro:', err.message));
+  }, { timezone: 'America/Sao_Paulo' });
 
   // ── 8h BRT: rotinas diárias do squad ──
   cron.schedule('0 8 * * *', async () => {
