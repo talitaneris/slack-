@@ -478,31 +478,34 @@ async function transcribeVoice(fileId) {
   }
   const audioBuffer = Buffer.from(await audioRes.arrayBuffer());
   const audioBase64 = audioBuffer.toString('base64');
-  const model = process.env.GEMINI_TRANSCRIBE_MODEL || 'gemini-2.5-flash';
-  const body = {
-    contents: [
-      {
-        parts: [
-          { inlineData: { mimeType: 'audio/ogg', data: audioBase64 } },
-          { text: 'Transcreva este audio em portugues do Brasil. Retorne somente a transcricao, sem comentario.' }
-        ]
-      }
-    ]
+
+  const speechBody = {
+    config: {
+      encoding: 'OGG_OPUS',
+      sampleRateHertz: 48000,
+      languageCode: 'pt-BR',
+      model: 'latest_long',
+    },
+    audio: { content: audioBase64 },
   };
-  const geminiRes = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleKey}`,
+  const speechRes = await fetch(
+    `https://speech.googleapis.com/v1/speech:recognize?key=${googleKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify(speechBody),
     }
   );
-  const geminiData = await geminiRes.json();
-  if (!geminiRes.ok) {
-    const detail = geminiData?.error?.message || `Gemini status: ${geminiRes.status}`;
+  const speechData = await speechRes.json();
+  if (!speechRes.ok) {
+    const detail = speechData?.error?.message || `Speech status: ${speechRes.status}`;
     throw new Error(detail.slice(0, 180));
   }
-  return geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const transcript = (speechData.results || [])
+    .map(r => r.alternatives?.[0]?.transcript || '')
+    .join(' ')
+    .trim();
+  return transcript;
 }
 
 async function handleTelegramUpdate(update, logger) {
