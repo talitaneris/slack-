@@ -8,7 +8,7 @@ const { listarEventos } = require('../services/calendar');
 const { listarEmailsManha } = require('../services/email');
 const { criarReuniaoZoom, isZoomConfigured } = require('../services/zoom');
 const { sendTelegramMessage } = require('../telegram/mariah');
-const { manutencaoSemanal } = require('../memory/mariah');
+const { manutencaoSemanal, buildMariahMemoryContext } = require('../memory/mariah');
 
 // IDs dos canais do Slack
 const CHANNELS = {
@@ -726,6 +726,42 @@ Feche com:
 
     } catch (err) {
       logger.error('Erro no cron 6h30 Nara:', err.message);
+    }
+  }, { timezone: 'America/Sao_Paulo' });
+
+  // ── 7h todo dia — briefing rápido da Mariah no Telegram ──
+  cron.schedule('0 7 * * *', async () => {
+    const chatId = process.env.TELEGRAM_ALLOWED_CHAT_ID;
+    if (!chatId) return;
+    logger.info('🌅 Cron 7h — briefing diário Mariah no Telegram');
+    try {
+      const memoria = await buildMariahMemoryContext();
+      let agendaHoje = '';
+      try {
+        const brt = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        const [y, m, d] = brt.split('-');
+        const start = new Date(`${y}-${m}-${d}T00:00:00-03:00`);
+        const end   = new Date(`${y}-${m}-${d}T23:59:59-03:00`);
+        const eventos = await listarEventos(start.toISOString(), end.toISOString());
+        if (eventos.length) {
+          agendaHoje = '\nAgenda de hoje:\n' + eventos.map(e => `• ${e.summary} — ${e.start?.dateTime ? new Date(e.start.dateTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }) : 'dia todo'}`).join('\n');
+        }
+      } catch {}
+
+      const system = `Você é a Mariah, agente executiva da Talita. É 7h da manhã.
+Envie um briefing diário curto, direto e útil. Sem saudação, sem emoji, sem introdução.
+Formato obrigatório:
+Hoje pede:
+Agenda: (lista os eventos do dia ou "agenda limpa")
+Pendências em aberto: (só as urgentes ou com prazo próximo da memória — máximo 3)
+Eu já vou: (o que a Mariah vai fazer sem precisar pedir)
+Depende de você: (só se houver decisão real pendente)
+${memoria}`;
+
+      const briefing = await callClaude(system, `Gere o briefing de hoje.${agendaHoje}`, 400);
+      await sendTelegramMessage(chatId, briefing);
+    } catch (err) {
+      logger.error('Erro no briefing 7h Mariah:', err.message);
     }
   }, { timezone: 'America/Sao_Paulo' });
 
