@@ -12,6 +12,95 @@ const { criarReuniaoZoom, isZoomConfigured } = require('../services/zoom');
 
 const TELEGRAM_API = 'https://api.telegram.org';
 
+// ─── CONFIGURAÇÃO DE CANAIS ───────────────────────────────────
+// Cada canal do Telegram tem um modo: geral | conteudo | negocio | financeiro | pessoal
+// Env: TELEGRAM_CHANNELS=chatid1:geral,chatid2:conteudo,chatid3:financeiro
+// Fallback: TELEGRAM_ALLOWED_CHAT_ID (modo geral, comportamento original)
+
+const CHANNEL_MODES = {
+  geral: {
+    label: 'Principal',
+    agentKey: 'assistente',
+    extraPrompt: '',
+  },
+  conteudo: {
+    label: 'Conteúdo',
+    agentKey: 'people',
+    extraPrompt: [
+      'MODO: Canal de Conteúdo.',
+      'Foco: criação de conteúdo, Instagram, TikTok, Reels, carrosséis, hooks magnéticos, legendas, calendário editorial, roteiros.',
+      'Responda como People — criativa, orientada a engajamento.',
+      'Quando pedirem hooks: entregue 4 tipos (atração, autoridade, conexão, venda).',
+      'Quando pedirem carrossel: estruture slide a slide com gancho, desenvolvimento e CTA.',
+      'Quando pedirem roteiro: abertura 3s + desenvolvimento + CTA.',
+      'Sem emoji. Formato limpo e acionável.',
+    ].join('\n'),
+  },
+  negocio: {
+    label: 'Negócio',
+    agentKey: 'jay',
+    extraPrompt: [
+      'MODO: Canal de Negócio.',
+      'Foco: estratégia comercial, pipeline, receita, A Base, evento, metas dos 4 focos.',
+      'Responda como Jay — analítico, orientado a resultado e número.',
+      'Cada resposta deve ter impacto claro na receita ou na meta.',
+      'Sem emoji. Direto e acionável.',
+    ].join('\n'),
+  },
+  financeiro: {
+    label: 'Financeiro',
+    agentKey: 'assistente',
+    extraPrompt: [
+      'MODO: Canal Financeiro.',
+      'Foco: controle de caixa, MRR, pagamentos, inadimplência, fluxo, contratos.',
+      'Seja analítica e precisa. Organize informações financeiras em formato claro.',
+      'Nunca invente número. Se não tiver dado confirmado, diga e proponha como obter.',
+      'Sem emoji. Tabela ou bullets quando necessário.',
+    ].join('\n'),
+  },
+  pessoal: {
+    label: 'Pessoal',
+    agentKey: 'assistente',
+    extraPrompt: [
+      'MODO: Canal Pessoal.',
+      'Foco: rotina de saúde, família, agenda pessoal, bem-estar, lembretes de vida fora do trabalho.',
+      'Seja leve e cuidadosa — esse canal é sobre vida, não negócio.',
+      'Pode ser mais informal, mas mantenha clareza e objetividade.',
+      'Sem emoji.',
+    ].join('\n'),
+  },
+};
+
+function parseChannelConfig() {
+  const raw = process.env.TELEGRAM_CHANNELS;
+  const map = new Map();
+
+  if (raw) {
+    for (const entry of raw.split(',')) {
+      const [id, mode] = entry.trim().split(':');
+      if (id && mode && CHANNEL_MODES[mode]) {
+        map.set(String(id.trim()), mode.trim());
+      }
+    }
+  }
+
+  // Fallback para variável legada — canal principal no modo geral
+  const legacy = process.env.TELEGRAM_ALLOWED_CHAT_ID;
+  if (legacy && !map.has(String(legacy))) {
+    map.set(String(legacy), 'geral');
+  }
+
+  return map;
+}
+
+// Cache do mapa de canais (não muda em runtime)
+const _channelConfig = parseChannelConfig();
+
+function getChannelMode(chatId) {
+  if (_channelConfig.size === 0) return 'geral'; // sem restrição configurada
+  return _channelConfig.get(String(chatId)) || null; // null = não permitido
+}
+
 // ─── COORDENAÇÃO COM O SQUAD ──────────────────────────────────
 
 const AGENT_CHANNEL_MAP = {
@@ -390,9 +479,11 @@ function shouldRespondWithVoice(userText, sourceIsVoice) {
   return false;
 }
 
-async function buildMariahSystem() {
-  const agent = AGENTS.assistente;
-  let system = [
+async function buildMariahSystem(channelMode = 'geral') {
+  const modeConfig = CHANNEL_MODES[channelMode] || CHANNEL_MODES.geral;
+  const agent = AGENTS[modeConfig.agentKey] || AGENTS.assistente;
+
+  const baseLines = [
     'Agora em America/Sao_Paulo: ' + getBrtNow() + '.',
     'CANAL: Telegram. Voce e a Mariah, agente executiva da Talita.',
     'Telegram e porta de entrada rapida: mensagem curta, audio, ideia solta, comando pessoal, rotina.',
@@ -414,7 +505,11 @@ async function buildMariahSystem() {
     'PROIBIDO: perguntar o que a mensagem quis dizer quando o contexto for suficiente. Interpreta e age. Se faltou algo essencial, faz uma pergunta unica e direta.',
     '',
     agent.system,
-  ].join('\n');
+  ];
+
+  if (modeConfig.extraPrompt) baseLines.push('', modeConfig.extraPrompt);
+
+  let system = baseLines.join('\n');
 
   try {
     const privateContext = await getPrivateContextForAgent(agent.key);
@@ -563,14 +658,14 @@ function isZoomRequest(text) {
   return false;
 }
 
-async function processMariahText(userText, source, chatId = null) {
+async function processMariahText(userText, source, chatId = null, channelMode = 'geral') {
   const lowerText = userText.toLowerCase();
   const emailTriggers = ['email', 'e-mail', 'caixa', 'inbox', 'mensagens do email', 'correio', 'zoho', 'listar email', 'ver email', 'meus emails'];
   const pedindoEmail = emailTriggers.some(t => lowerText.includes(t));
 
   if (isBriefingRequest(userText)) {
     try {
-      const system = await buildMariahSystem();
+      const system = await buildMariahSystem(channelMode);
       const prompt = await buildManualBriefingPrompt();
       const raw = await callClaude(system, prompt, 1500);
       pushToHistory(chatId, 'user', userText);
@@ -584,7 +679,7 @@ async function processMariahText(userText, source, chatId = null) {
   if (pedindoEmail && isEmailConfigured()) {
     try {
       const emails = await listarEmailsManha({ limit: 12, hours: 24 });
-      const system = await buildMariahSystem();
+      const system = await buildMariahSystem(channelMode);
       const prompt = `Aqui estão os e-mails recentes da Talita:\n\n${emails}\n\nResuma de forma clara e humana, como uma assistente executiva faria. Destaque o que precisa de atenção urgente, o que é financeiro importante e o que pode ignorar. Seja direta, sem emoji e sem título com seu nome.`;
       const raw = await callClaude(system, prompt, 1200);
       pushToHistory(chatId, 'user', userText);
@@ -634,7 +729,7 @@ async function processMariahText(userText, source, chatId = null) {
     }
   }
 
-  const system = await buildMariahSystem();
+  const system = await buildMariahSystem(channelMode);
   const calendarResponse = await processMariahCalendar(userText, system);
   if (calendarResponse) {
     registrarNaMemoria(userText, calendarResponse).catch(() => {});
@@ -742,9 +837,9 @@ function extractTelegramMessage(update) {
 }
 
 function isAllowedChat(chatId) {
-  const allowed = process.env.TELEGRAM_ALLOWED_CHAT_ID;
-  if (!allowed) return true;
-  return String(chatId) === String(allowed);
+  // Sem configuração = aceita todos os chats (modo desenvolvimento)
+  if (_channelConfig.size === 0) return true;
+  return _channelConfig.has(String(chatId));
 }
 
 async function transcribeVoice(fileId) {
@@ -804,6 +899,9 @@ async function handleTelegramUpdate(update, logger) {
     return;
   }
 
+  // Determina o modo do canal (geral, conteudo, negocio, financeiro, pessoal)
+  const channelMode = getChannelMode(msg.chatId) || 'geral';
+
   // Carrega histórico do Supabase na primeira mensagem da sessão (após restart)
   await ensureHistoryLoaded(msg.chatId);
 
@@ -830,7 +928,7 @@ async function handleTelegramUpdate(update, logger) {
     acionarOnboarding(userText, msg.chatId, logger).catch(() => {});
   }
 
-  const response = await processMariahText(userText, sourceIsVoice ? 'Audio' : 'Telegram', msg.chatId);
+  const response = await processMariahText(userText, sourceIsVoice ? 'Audio' : 'Telegram', msg.chatId, channelMode);
 
   // Coordena squad em paralelo — não bloqueia a resposta para Talita
   detectarEDelegarSquad(userText, response, logger).catch(() => {});
@@ -854,11 +952,14 @@ function registerTelegramMariah(receiver, logger, slackClient) {
   if (slackClient) _slackClient = slackClient;
 
   receiver.router.get('/telegram/status', function(req, res) {
+    const channels = [];
+    _channelConfig.forEach((mode, id) => channels.push({ id, mode, label: CHANNEL_MODES[mode]?.label || mode }));
     res.json({
       ok: true,
       enabled: !!process.env.TELEGRAM_BOT_TOKEN,
       webhook: '/telegram/webhook',
-      allowed_chat_configured: !!process.env.TELEGRAM_ALLOWED_CHAT_ID,
+      channels,
+      channels_configured: channels.length,
     });
   });
 
