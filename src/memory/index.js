@@ -197,7 +197,7 @@ async function removeAprovacaoPendente(messageTs) {
 // ─── MEMÓRIA ESTRUTURADA DA MARIAH ───────────────────────────
 // Usa a mesma tabela agent_memory com chaves prefixadas por categoria.
 
-const MARIAH_CATEGORIES = ['decisoes', 'pendencias', 'aprendizados', 'preferencias', 'contexto_semanal'];
+const MARIAH_CATEGORIES = ['decisoes', 'pendencias', 'aprendizados', 'preferencias', 'contexto_semanal', 'talita_profile', 'episodios'];
 
 async function readMariahMemory(category) {
   return readMemory(`mariah_${category}`);

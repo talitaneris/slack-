@@ -1,12 +1,16 @@
 'use strict';
 
-const { readAllMariahMemory, writeMariahMemory } = require('./index');
+const { readAllMariahMemory, readMariahMemory, writeMariahMemory } = require('./index');
 const { callClaudeFast } = require('../claude');
 
 // ─── BOOT: monta contexto de memória para o system prompt ────
 
 function formatMariahMemoryForSystem(memories) {
   const sections = [];
+
+  // Perfil cumulativo — vai primeiro, é o contexto mais rico
+  if (memories.talita_profile?.trim())
+    sections.push(`PERFIL DA TALITA (construído ao longo do tempo — use para antecipar):\n${memories.talita_profile}`);
 
   if (memories.decisoes?.trim())
     sections.push(`DECISÕES REGISTRADAS (nunca contradizer):\n${memories.decisoes}`);
@@ -22,6 +26,13 @@ function formatMariahMemoryForSystem(memories) {
 
   if (memories.contexto_semanal?.trim())
     sections.push(`CONTEXTO SEMANAL:\n${memories.contexto_semanal}`);
+
+  // Episódios recentes — últimos 5 dias para consciência situacional
+  if (memories.episodios?.trim()) {
+    const linhas = memories.episodios.trim().split('\n');
+    const recentes = linhas.slice(-20).join('\n'); // últimas 20 linhas
+    sections.push(`EPISÓDIOS RECENTES:\n${recentes}`);
+  }
 
   if (sections.length === 0) return '';
   return '=== MEMÓRIA ESTRUTURADA ===\n' + sections.join('\n\n') + '\n=== FIM DA MEMÓRIA ===';
@@ -117,6 +128,73 @@ async function registrarNaMemoria(userText, mariahResponse) {
   }
 }
 
+// ─── CONSOLIDAÇÃO DIÁRIA (toda noite 23h30) ──────────────────
+// Lê o histórico do dia, extrai insights sobre a Talita e cresce o perfil
+
+const CONSOLIDACAO_EPISODIO_SYSTEM = `Você é o sistema de memória da Mariah. Analise as conversas do dia e extraia o que é relevante para lembrar.
+
+Retorne JSON válido (sem markdown):
+{
+  "episodio": "resumo do dia em 2-3 frases — o que aconteceu, o que Talita decidiu, como ela estava",
+  "perfil_delta": "1-3 fatos novos aprendidos sobre Talita hoje (jeito de trabalhar, padrões, preferências, comportamentos) — ou null se nada novo",
+  "pendencia_nova": "tarefa ou compromisso novo que surgiu hoje — ou null"
+}
+
+Regras:
+- episodio: sempre preencha — é o diário da Mariah, cresce todo dia
+- perfil_delta: só quando aprendeu algo genuinamente novo sobre a Talita, não repita o que já sabe
+- pendencia_nova: só quando surgiu algo concreto com dono/prazo
+- Se o histórico estiver vazio, retorne episodio: "Dia sem conversa registrada"`;
+
+async function consolidarMemoriaDiaria() {
+  try {
+    // Lê histórico do dia de todas as sessões conhecidas
+    const histRaw = await readMariahMemory('history');
+    if (!histRaw?.trim()) {
+      // Sem histórico — registra episódio mínimo
+      const brtNow = new Date(Date.now() - 3 * 60 * 60 * 1000)
+        .toISOString().replace('T', ' ').slice(0, 10);
+      const episodioAtual = await readMariahMemory('episodios') || '';
+      await writeMariahMemory('episodios', episodioAtual + `\n[${brtNow}] Dia sem conversa registrada`);
+      return;
+    }
+
+    // Pega as últimas mensagens do dia (últimos 50 pares = 100 mensagens no máximo)
+    let hist = [];
+    try { hist = JSON.parse(histRaw); } catch { return; }
+    const resumo = hist.slice(-50).map(m => `${m.role}: ${m.content}`).join('\n');
+
+    const raw = await callClaudeFast(CONSOLIDACAO_EPISODIO_SYSTEM, `Conversas do dia:\n${resumo.slice(0, 3000)}`, 500);
+    const jsonStr = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const parsed = JSON.parse(jsonStr);
+
+    const brtNow = new Date(Date.now() - 3 * 60 * 60 * 1000)
+      .toISOString().replace('T', ' ').slice(0, 10);
+
+    // Cresce o diário de episódios (nunca apaga — memória infinita)
+    if (parsed.episodio) {
+      const episodioAtual = await readMariahMemory('episodios') || '';
+      await writeMariahMemory('episodios', episodioAtual + `\n[${brtNow}] ${parsed.episodio.trim()}`);
+    }
+
+    // Cresce o perfil da Talita (só adiciona conhecimento novo)
+    if (parsed.perfil_delta && typeof parsed.perfil_delta === 'string' && parsed.perfil_delta.trim()) {
+      const perfilAtual = await readMariahMemory('talita_profile') || '';
+      await writeMariahMemory('talita_profile', perfilAtual + `\n[${brtNow}] ${parsed.perfil_delta.trim()}`);
+    }
+
+    // Registra nova pendência se surgiu
+    if (parsed.pendencia_nova && typeof parsed.pendencia_nova === 'string' && parsed.pendencia_nova.trim()) {
+      const pendencias = await readMariahMemory('pendencias') || '';
+      await writeMariahMemory('pendencias', pendencias + `\n[${brtNow}] ${parsed.pendencia_nova.trim()}`);
+    }
+
+    console.log('[mariah-memory] Consolidação diária concluída');
+  } catch (err) {
+    console.error('[mariah-memory] Erro na consolidação diária:', err.message);
+  }
+}
+
 // ─── MANUTENÇÃO SEMANAL (toda segunda) ───────────────────────
 
 const MANUTENCAO_PENDENCIAS_SYSTEM = `Você é o sistema de manutenção de memória da Mariah. É segunda-feira — hora de limpar.
@@ -158,4 +236,4 @@ async function manutencaoSemanal() {
   }
 }
 
-module.exports = { buildMariahMemoryContext, registrarNaMemoria, manutencaoSemanal };
+module.exports = { buildMariahMemoryContext, registrarNaMemoria, manutencaoSemanal, consolidarMemoriaDiaria };

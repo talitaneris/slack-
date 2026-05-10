@@ -8,7 +8,7 @@ const { listarEventos } = require('../services/calendar');
 const { listarEmailsManha } = require('../services/email');
 const { criarReuniaoZoom, isZoomConfigured } = require('../services/zoom');
 const { sendTelegramMessage, getMilestoneContext } = require('../telegram/mariah');
-const { manutencaoSemanal, buildMariahMemoryContext } = require('../memory/mariah');
+const { manutencaoSemanal, buildMariahMemoryContext, consolidarMemoriaDiaria } = require('../memory/mariah');
 
 // IDs dos canais do Slack
 const CHANNELS = {
@@ -1143,6 +1143,12 @@ ${memoria}`;
     logger.info('[saude] Lembrete 13h enviado');
   }, { timezone: 'America/Sao_Paulo' });
 
+  // ── 23h30 BRT diário — consolidação da memória da Mariah ──
+  cron.schedule('30 23 * * *', async () => {
+    logger.info('🧠 Cron 23h30 — consolidação diária da memória da Mariah');
+    await consolidarMemoriaDiaria().catch(err => logger.error('[consolidacao-diaria] Erro:', err.message));
+  }, { timezone: 'America/Sao_Paulo' });
+
   // ── Meia-noite BRT diário — limpeza da fila inter-agente ──
   cron.schedule('0 0 * * *', () => {
     try {
@@ -1155,7 +1161,7 @@ ${memoria}`;
     }
   }, { timezone: 'America/Sao_Paulo' });
 
-  logger.info('🗓️ Scheduler iniciado — 6h pautas | 6h30 briefing | 8h rotinas+stories | 8h20 seg/qua/sex treino | 9h30 seg conselho | 10h seg cobrança-jay | 13h pausa | 17h sex fecha-computador | 17h30 digest-squad | 18h métricas | 18h45 seg zoom | 20h pauta | 0h cleanup');
+  logger.info('🗓️ Scheduler iniciado — 6h pautas | 6h30 briefing | 8h rotinas+stories | 8h20 seg/qua/sex treino | 9h30 seg conselho | 10h seg cobrança-jay | 13h pausa | 17h sex fecha-computador | 17h30 digest-squad | 18h45 seg zoom | 20h pauta | 23h30 consolidação-memória | 0h cleanup');
 }
 
 module.exports = { initScheduler, runStoriesApprovalRoutine };
