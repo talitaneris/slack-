@@ -934,10 +934,19 @@ function extractTelegramMessage(update) {
   };
 }
 
+// Registro temporário de chats desconhecidos — para descobrir IDs de novos grupos
+const _unknownChats = new Map(); // chatId → { title, date }
+
 function isAllowedChat(chatId) {
   // Sem configuração = aceita todos os chats (modo desenvolvimento)
   if (_channelConfig.size === 0) return true;
   return _channelConfig.has(String(chatId));
+}
+
+function registerUnknownChat(chatId, title) {
+  if (!_channelConfig.has(String(chatId))) {
+    _unknownChats.set(String(chatId), { title: title || 'sem título', date: new Date().toISOString() });
+  }
 }
 
 async function transcribeVoice(fileId) {
@@ -987,6 +996,11 @@ async function handleTelegramUpdate(update, logger) {
   if (!logger) logger = console;
   const msg = extractTelegramMessage(update);
   if (!msg || !msg.chatId) return;
+
+  // Registra chat desconhecido para diagnóstico (descobrir IDs de novos grupos)
+  const chatTitle = update.message?.chat?.title || update.message?.chat?.username || null;
+  registerUnknownChat(msg.chatId, chatTitle);
+
   if (!isAllowedChat(msg.chatId)) {
     logger.warn('Telegram bloqueado para chat_id=' + msg.chatId);
     await sendTelegramMessage(msg.chatId, 'Este bot da Mariah ainda nao esta liberado para este chat.');
@@ -1052,12 +1066,15 @@ function registerTelegramMariah(receiver, logger, slackClient) {
   receiver.router.get('/telegram/status', function(req, res) {
     const channels = [];
     _channelConfig.forEach((mode, id) => channels.push({ id, mode, label: CHANNEL_MODES[mode]?.label || mode }));
+    const unknown = [];
+    _unknownChats.forEach((info, id) => unknown.push({ id, title: info.title, date: info.date }));
     res.json({
       ok: true,
       enabled: !!process.env.TELEGRAM_BOT_TOKEN,
       webhook: '/telegram/webhook',
       channels,
       channels_configured: channels.length,
+      unknown_chats: unknown,
     });
   });
 
