@@ -756,6 +756,60 @@ function isZoomRequest(text) {
   return false;
 }
 
+// ─── NOTION ───────────────────────────────────────────────────
+const { isConfigured: isNotionConfigured, searchNotion, readPage, queryDatabase, createPage } = require('../services/notion');
+
+async function processNotionRequest(userText, systemPrompt) {
+  if (!isNotionConfigured()) return null;
+
+  const lower = userText.toLowerCase();
+  const isNotionRequest =
+    lower.includes('notion') ||
+    lower.includes('minha base') ||
+    lower.includes('meu banco') ||
+    lower.includes('minha página') ||
+    lower.includes('minha pagina') ||
+    lower.includes('meu documento') ||
+    lower.includes('no notion') ||
+    lower.includes('do notion');
+
+  if (!isNotionRequest) return null;
+
+  try {
+    // Detecta ID de página/database na mensagem (UUID do Notion)
+    const idMatch = userText.match(/([a-f0-9]{32}|[a-f0-9-]{36})/i);
+
+    // Ação: criar página
+    if (lower.includes('cria') || lower.includes('adiciona') || lower.includes('registra')) {
+      const { callClaudeFast: fast } = require('../claude');
+      const raw = await fast(
+        'Extraia do texto: {"parent_id": "id do banco/página pai ou null", "title": "título", "content": "conteúdo"}. JSON sem markdown.',
+        userText, 200
+      );
+      const parsed = JSON.parse(raw.replace(/```json?\n?/g, '').replace(/```/g, '').trim());
+      if (parsed.parent_id && parsed.title) {
+        const result = await createPage(parsed.parent_id, parsed.title, parsed.content || '');
+        return result;
+      }
+    }
+
+    // Ação: ler página específica
+    if (idMatch && (lower.includes('lê') || lower.includes('le ') || lower.includes('abre') || lower.includes('mostra') || lower.includes('qual') || lower.includes('o que tem'))) {
+      const content = await readPage(idMatch[1]);
+      return content;
+    }
+
+    // Ação: busca
+    const queryMatch = userText.match(/(?:busca|procura|encontra|pesquisa|acha)\s+(?:no notion\s+)?(.+?)(?:\s+no notion)?$/i);
+    const query = queryMatch ? queryMatch[1] : userText.replace(/notion/gi, '').trim();
+    const results = await searchNotion(query);
+    return `Resultados no Notion para "${query}":\n\n${results}`;
+
+  } catch (err) {
+    return `Erro ao acessar o Notion: ${err.message}`;
+  }
+}
+
 // ─── FETCH URL ────────────────────────────────────────────────
 async function fetchUrl(url) {
   try {
@@ -1172,6 +1226,14 @@ async function handleTelegramUpdate(update, logger) {
     const query = queryMatch ? queryMatch[1] : userText;
     const resultados = await webSearch(query);
     userText = userText + '\n\n[Resultados da busca]:\n' + resultados;
+  }
+
+  // ── Notion: detecta intenção e executa ──
+  const notionResponse = await processNotionRequest(userText, await buildMariahSystem(channelMode));
+  if (notionResponse) {
+    await sendTelegramMessage(msg.chatId, notionResponse);
+    registrarNaMemoria(userText, notionResponse).catch(() => {});
+    return;
   }
 
   // Gatilho: novo cliente / fechamento
