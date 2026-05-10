@@ -756,6 +756,116 @@ function isZoomRequest(text) {
   return false;
 }
 
+// ─── FETCH URL ────────────────────────────────────────────────
+async function fetchUrl(url) {
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Mariah/1.0)' },
+      signal: AbortSignal.timeout(10000),
+    });
+    const contentType = res.headers.get('content-type') || '';
+
+    // Google Drive — converte para download direto
+    if (url.includes('drive.google.com/file/d/')) {
+      const match = url.match(/\/d\/([^/]+)/);
+      if (match) {
+        const exportUrl = `https://drive.google.com/uc?export=download&id=${match[1]}`;
+        const exportRes = await fetch(exportUrl, { signal: AbortSignal.timeout(10000) });
+        const text = await exportRes.text();
+        return text.slice(0, 6000);
+      }
+    }
+
+    if (contentType.includes('text') || contentType.includes('json') || contentType.includes('html')) {
+      const html = await res.text();
+      // Remove tags HTML para texto limpo
+      const clean = html
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s{2,}/g, ' ')
+        .trim()
+        .slice(0, 6000);
+      return clean;
+    }
+    return `Arquivo do tipo ${contentType} — não consigo ler o conteúdo diretamente.`;
+  } catch (err) {
+    return `Erro ao acessar o link: ${err.message}`;
+  }
+}
+
+// Detecta URLs numa mensagem
+function extractUrls(text) {
+  const urlRegex = /https?:\/\/[^\s]+/g;
+  return text.match(urlRegex) || [];
+}
+
+// ─── ANÁLISE DE IMAGEM ────────────────────────────────────────
+async function analyzePhoto(fileId, caption, systemPrompt) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  try {
+    // Baixa o arquivo do Telegram
+    const fileRes = await fetch(`${TELEGRAM_API}/bot${token}/getFile?file_id=${fileId}`);
+    const fileData = await fileRes.json();
+    if (!fileData.result?.file_path) throw new Error('getFile falhou');
+
+    const imgRes = await fetch(`${TELEGRAM_API}/file/bot${token}/${fileData.result.file_path}`);
+    if (!imgRes.ok) throw new Error('download imagem falhou');
+    const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
+    const base64 = imgBuffer.toString('base64');
+    const mimeType = fileData.result.file_path.endsWith('.png') ? 'image/png' : 'image/jpeg';
+
+    // Chama Claude com visão
+    const Anthropic = require('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const response = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1500,
+      system: systemPrompt,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } },
+          { type: 'text', text: caption || 'Analise esta imagem e responda como Mariah.' },
+        ],
+      }],
+    });
+    return response.content[0].text;
+  } catch (err) {
+    return `Não consegui analisar a imagem: ${err.message}`;
+  }
+}
+
+// ─── BUSCA NA WEB ─────────────────────────────────────────────
+async function webSearch(query) {
+  try {
+    // Brave Search API
+    const braveKey = process.env.BRAVE_SEARCH_API_KEY;
+    if (braveKey) {
+      const res = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5&country=br&lang=pt`, {
+        headers: { 'Accept': 'application/json', 'X-Subscription-Token': braveKey },
+        signal: AbortSignal.timeout(8000),
+      });
+      const data = await res.json();
+      const results = (data.web?.results || []).slice(0, 5);
+      if (results.length) {
+        return results.map(r => `• ${r.title}\n  ${r.description || ''}\n  ${r.url}`).join('\n\n');
+      }
+    }
+
+    // Fallback: DuckDuckGo Instant Answer
+    const res = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`, {
+      signal: AbortSignal.timeout(8000),
+    });
+    const data = await res.json();
+    const resumo = data.AbstractText || data.Answer || '';
+    const related = (data.RelatedTopics || []).slice(0, 4).map(t => `• ${t.Text || ''}`).join('\n');
+    return [resumo, related].filter(Boolean).join('\n\n') || 'Sem resultados diretos — tente refinar a busca.';
+  } catch (err) {
+    return `Erro na busca: ${err.message}`;
+  }
+}
+
 async function processMariahText(userText, source, chatId = null, channelMode = 'geral') {
   const lowerText = userText.toLowerCase();
   const emailTriggers = ['email', 'e-mail', 'caixa', 'inbox', 'mensagens do email', 'correio', 'zoho', 'listar email', 'ver email', 'meus emails'];
@@ -923,6 +1033,8 @@ function extractTelegramMessage(update) {
   const text = message.text || message.caption || '';
   const voice = message.voice;
   const photo = message.photo;
+  // Pega a maior resolução disponível
+  const photoFileId = photo ? photo[photo.length - 1]?.file_id : null;
   return {
     chatId: message.chat && message.chat.id,
     userId: message.from && message.from.id,
@@ -931,6 +1043,7 @@ function extractTelegramMessage(update) {
     hasVoice: !!voice,
     hasPhoto: !!photo,
     voiceFileId: (voice && voice.file_id) || null,
+    photoFileId,
   };
 }
 
@@ -1030,10 +1143,36 @@ async function handleTelegramUpdate(update, logger) {
       return;
     }
   }
-  if (!userText && msg.hasPhoto) {
-    userText = 'Talita enviou uma imagem no Telegram sem legenda. Responda como Mariah.';
+  // ── Imagem: lê e analisa com visão do Claude ──
+  if (msg.hasPhoto && msg.photoFileId) {
+    const system = await buildMariahSystem(channelMode);
+    const caption = msg.text || 'Analise esta imagem e responda como Mariah.';
+    const response = await analyzePhoto(msg.photoFileId, caption, system);
+    await sendTelegramMessage(msg.chatId, response);
+    registrarNaMemoria(caption, response).catch(() => {});
+    return;
   }
+
   if (!userText) return;
+
+  // ── URL: detecta links e injeta o conteúdo na mensagem ──
+  const urls = extractUrls(userText);
+  if (urls.length > 0) {
+    const conteudos = await Promise.all(urls.map(async url => {
+      const conteudo = await fetchUrl(url);
+      return `[Conteúdo de ${url}]:\n${conteudo}`;
+    }));
+    userText = userText + '\n\n' + conteudos.join('\n\n');
+  }
+
+  // ── Busca web: detecta intenção de pesquisa ──
+  const buscaRegex = /\b(busca|pesquisa|procura|acha|encontra|pesquise|verifique|quanto custa|qual o preço|melhor (voo|hotel|hospedagem|passagem)|voos? (para|de)|hoteis? em)\b/i;
+  if (buscaRegex.test(userText) && !urls.length) {
+    const queryMatch = userText.match(/(?:busca|pesquisa|procura|acha|encontra|pesquise|verifique)\s+(.+)/i);
+    const query = queryMatch ? queryMatch[1] : userText;
+    const resultados = await webSearch(query);
+    userText = userText + '\n\n[Resultados da busca]:\n' + resultados;
+  }
 
   // Gatilho: novo cliente / fechamento
   if (isNovoClienteGatilho(userText)) {
