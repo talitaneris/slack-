@@ -4,6 +4,7 @@ const { AGENTS } = require('../agents');
 const { callClaude, callClaudeWithHistory, callClaudeFast } = require('../claude');
 const { processMariahCalendar } = require('../handlers/mariah');
 const { buildMariahMemoryContext, registrarNaMemoria } = require('../memory/mariah');
+const { readMariahMemory, writeMariahMemory } = require('../memory/index');
 const { getPrivateContextForAgent } = require('../privateContext');
 const { listarEventos } = require('../services/calendar');
 const { listarEmailsManha, isEmailConfigured, enviarEmail } = require('../services/email');
@@ -26,10 +27,31 @@ const AGENT_CHANNEL_MAP = {
 
 let _slackClient = null;
 
-// ─── HISTÓRICO DE CONVERSA POR SESSÃO ────────────────────────
-// Mantido em memória — reinicia com o servidor, sem custo de latência
+// ─── HISTÓRICO DE CONVERSA PERSISTENTE ───────────────────────
+// Cache em memória para velocidade + Supabase para durabilidade entre sessões.
+// Sobrevive reinicializações do Render — Mariah retoma o contexto de onde parou.
 const _conversationHistory = new Map();
-const HISTORY_MAX_PAIRS = 8; // 8 pares = 16 mensagens de contexto
+const _historyLoaded = new Set(); // chatIds já carregados nesta sessão
+const HISTORY_MAX_PAIRS = 25; // 25 trocas = 50 mensagens — contexto de um dia inteiro
+
+async function ensureHistoryLoaded(chatId) {
+  if (!chatId) return;
+  const id = String(chatId);
+  if (_historyLoaded.has(id)) return;
+  _historyLoaded.add(id);
+
+  try {
+    const raw = await readMariahMemory('history');
+    if (raw && raw.trim()) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        _conversationHistory.set(id, parsed);
+      }
+    }
+  } catch {}
+
+  if (!_conversationHistory.has(id)) _conversationHistory.set(id, []);
+}
 
 function getHistory(chatId) {
   if (!chatId) return [];
@@ -40,9 +62,11 @@ function pushToHistory(chatId, role, content) {
   if (!chatId) return;
   const id = String(chatId);
   const hist = _conversationHistory.get(id) || [];
-  hist.push({ role, content: String(content).slice(0, 3000) });
+  hist.push({ role, content: String(content).slice(0, 1500) });
   if (hist.length > HISTORY_MAX_PAIRS * 2) hist.splice(0, 2);
   _conversationHistory.set(id, hist);
+  // Persiste de forma assíncrona — não bloqueia a resposta para Talita
+  writeMariahMemory('history', JSON.stringify(hist)).catch(() => {});
 }
 
 function isPassandoTrabalhoParaTalita(texto) {
@@ -779,6 +803,10 @@ async function handleTelegramUpdate(update, logger) {
     await sendTelegramMessage(msg.chatId, 'Sou a Mariah. Me manda texto, ideia solta, print com legenda ou comando rapido.');
     return;
   }
+
+  // Carrega histórico do Supabase na primeira mensagem da sessão (após restart)
+  await ensureHistoryLoaded(msg.chatId);
+
   let userText = msg.text;
   let sourceIsVoice = false;
   if (!userText && msg.hasVoice) {
