@@ -989,10 +989,10 @@ function registerTelegramMariah(receiver, logger, slackClient) {
     }
     try {
       const body = await readJsonBody(req);
-      const text = String(body.text || body.message || '').trim();
+      const text = String(req.query.text || body.text || body.message || '').trim();
       if (!text) return res.status(400).json({ ok: false, error: 'text_required' });
 
-      const chatId = body.chat_id || process.env.TELEGRAM_ALLOWED_CHAT_ID;
+      const chatId = req.query.chat_id || body.chat_id || process.env.TELEGRAM_ALLOWED_CHAT_ID;
 
       // Responde imediatamente para não dar timeout no iOS Shortcuts
       res.json({ ok: true, response: 'Processando...' });
