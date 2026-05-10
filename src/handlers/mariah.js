@@ -217,7 +217,7 @@ async function processMariahCalendar(userMessage, systemPrompt) {
     }
 
     // Pede à Mariah para estruturar a ação em JSON
-    const raw = await callClaude(getMariahCalendarSystem(), userMessage, 600);
+    const raw = await callClaude(getMariahCalendarSystem(), userMessage, 800);
 
     // Extrai o JSON da resposta (remove markdown se o modelo adicionou)
     const jsonStr = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();

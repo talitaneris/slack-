@@ -1,7 +1,7 @@
 'use strict';
 
 const { AGENTS } = require('../agents');
-const { callClaude } = require('../claude');
+const { callClaude, callClaudeWithHistory, callClaudeFast } = require('../claude');
 const { processMariahCalendar } = require('../handlers/mariah');
 const { buildMariahMemoryContext, registrarNaMemoria } = require('../memory/mariah');
 const { getPrivateContextForAgent } = require('../privateContext');
@@ -26,6 +26,25 @@ const AGENT_CHANNEL_MAP = {
 
 let _slackClient = null;
 
+// ─── HISTÓRICO DE CONVERSA POR SESSÃO ────────────────────────
+// Mantido em memória — reinicia com o servidor, sem custo de latência
+const _conversationHistory = new Map();
+const HISTORY_MAX_PAIRS = 8; // 8 pares = 16 mensagens de contexto
+
+function getHistory(chatId) {
+  if (!chatId) return [];
+  return [...(_conversationHistory.get(String(chatId)) || [])];
+}
+
+function pushToHistory(chatId, role, content) {
+  if (!chatId) return;
+  const id = String(chatId);
+  const hist = _conversationHistory.get(id) || [];
+  hist.push({ role, content: String(content).slice(0, 3000) });
+  if (hist.length > HISTORY_MAX_PAIRS * 2) hist.splice(0, 2);
+  _conversationHistory.set(id, hist);
+}
+
 function isPassandoTrabalhoParaTalita(texto) {
   const lower = normalizeText(texto);
   return [
@@ -42,7 +61,7 @@ async function detectarEDelegarSquad(userText, mariahResponse, logger) {
   // Gatilho: Mariah jogou trabalho de volta pra Talita quando podia delegar
   if (isPassandoTrabalhoParaTalita(mariahResponse)) {
     try {
-      const correcao = await callClaude(
+      const correcao = await callClaudeFast(
         'Você é a Mariah. Identifique o que nessa resposta deveria ir para um agente do squad em vez de voltar para Talita. Retorne JSON: {"agente":"nome do agente dono","tarefa":"o que fazer em 1 frase"}. Se não houver delegação possível, retorne null.',
         `Resposta problemática: "${mariahResponse.slice(0, 500)}"`,
         150
@@ -67,7 +86,7 @@ async function detectarEDelegarSquad(userText, mariahResponse, logger) {
   if (mencionados.length === 0) return;
 
   try {
-    const raw = await callClaude(
+    const raw = await callClaudeFast(
       'Você extrai delegações reais de respostas da Mariah. Retorne apenas JSON válido, sem markdown.',
       `Mensagem da Talita: "${userText.slice(0, 300)}"\nResposta da Mariah: "${mariahResponse.slice(0, 600)}"\n\nExtrai apenas delegações reais para o squad. Se a menção for só contextual (ex: "Nara já resolveu"), ignore.\nRetorne JSON: [{"agente":"nome","tarefa":"o que fazer em 1 frase direta"}]\nSe não há delegação real, retorne [].`,
       250
@@ -104,7 +123,7 @@ function isNovoClienteGatilho(text) {
 
 async function acionarOnboarding(userText, chatId, logger) {
   try {
-    const nome = await callClaude(
+    const nome = await callClaudeFast(
       'Extraia apenas o nome do cliente ou mentorada mencionado. Se não houver nome claro, retorne "novo cliente". Retorne só o nome, sem mais texto.',
       userText.slice(0, 300),
       30
@@ -520,7 +539,7 @@ function isZoomRequest(text) {
   return false;
 }
 
-async function processMariahText(userText, source) {
+async function processMariahText(userText, source, chatId = null) {
   const lowerText = userText.toLowerCase();
   const emailTriggers = ['email', 'e-mail', 'caixa', 'inbox', 'mensagens do email', 'correio', 'zoho', 'listar email', 'ver email', 'meus emails'];
   const pedindoEmail = emailTriggers.some(t => lowerText.includes(t));
@@ -529,8 +548,10 @@ async function processMariahText(userText, source) {
     try {
       const system = await buildMariahSystem();
       const prompt = await buildManualBriefingPrompt();
-      const response = await callClaude(system, prompt, 650);
-      return formatForTelegram(response);
+      const raw = await callClaude(system, prompt, 1500);
+      pushToHistory(chatId, 'user', userText);
+      pushToHistory(chatId, 'assistant', raw);
+      return formatForTelegram(raw);
     } catch (err) {
       return formatForTelegram('A consulta de agenda ou e-mail falhou. Vou acionar Nara para diagnosticar conexão de Google Calendar e Zoho.');
     }
@@ -541,8 +562,10 @@ async function processMariahText(userText, source) {
       const emails = await listarEmailsManha({ limit: 12, hours: 24 });
       const system = await buildMariahSystem();
       const prompt = `Aqui estão os e-mails recentes da Talita:\n\n${emails}\n\nResuma de forma clara e humana, como uma assistente executiva faria. Destaque o que precisa de atenção urgente, o que é financeiro importante e o que pode ignorar. Seja direta, sem emoji e sem título com seu nome.`;
-      const response = await callClaude(system, prompt, 600);
-      return formatForTelegram(response);
+      const raw = await callClaude(system, prompt, 1200);
+      pushToHistory(chatId, 'user', userText);
+      pushToHistory(chatId, 'assistant', raw);
+      return formatForTelegram(raw);
     } catch (err) {
       return formatForTelegram('Erro ao buscar e-mails. Tente novamente.');
     }
@@ -553,14 +576,16 @@ async function processMariahText(userText, source) {
     const isIndividual = lowerZoom.includes('individual') || lowerZoom.includes('1:1') || lowerZoom.includes('one on one');
     const emailMatch = userText.match(/[\w.+\-]+@[\w.\-]+\.\w+/);
 
-    // Reunião individual sem e-mail → pede o e-mail antes de criar
     if (isIndividual && !emailMatch) {
-      return formatForTelegram('Qual é o e-mail da participante? Assim eu já envio o link direto para ela.');
+      const msg = 'Qual é o e-mail da participante? Assim eu já envio o link direto para ela.';
+      pushToHistory(chatId, 'user', userText);
+      pushToHistory(chatId, 'assistant', msg);
+      return formatForTelegram(msg);
     }
 
     try {
       const meeting = await criarReuniaoZoom({ topic: 'Reunião' });
-      let reply = `🎥 *Zoom criado!*\n\n🔗 ${meeting.joinUrl}\n🔑 Senha: ${meeting.password || 'sem senha'}\n📋 ID: \`${meeting.meetingId}\``;
+      let reply = `Zoom criado.\n\n${meeting.joinUrl}\nSenha: ${meeting.password || 'sem senha'}\nID: ${meeting.meetingId}`;
 
       if (emailMatch && isEmailConfigured()) {
         try {
@@ -569,14 +594,16 @@ async function processMariahText(userText, source) {
             subject: 'Link da sua reunião com Talita',
             body: `Olá!\n\nSegue o link para a sua reunião:\n\n${meeting.joinUrl}\nSenha: ${meeting.password || 'sem senha'}\n\nAté logo!`,
           });
-          reply += `\n\n📧 Link enviado para ${emailMatch[0]}`;
+          reply += `\n\nLink enviado para ${emailMatch[0]}`;
         } catch (err) {
-          reply += `\n\n⚠️ E-mail não enviado: ${err.message}`;
+          reply += `\n\nE-mail não enviado: ${err.message}`;
         }
       } else if (emailMatch) {
-        reply += '\n\n_Configure ZOHO_OAUTH* no Render para envio de e-mail._';
+        reply += '\n\nConfigure ZOHO_OAUTH* no Render para envio de e-mail.';
       }
 
+      pushToHistory(chatId, 'user', userText);
+      pushToHistory(chatId, 'assistant', reply);
       return formatForTelegram(reply);
     } catch (err) {
       return formatForTelegram(`Erro ao criar reunião Zoom: ${err.message}`);
@@ -587,6 +614,8 @@ async function processMariahText(userText, source) {
   const calendarResponse = await processMariahCalendar(userText, system);
   if (calendarResponse) {
     registrarNaMemoria(userText, calendarResponse).catch(() => {});
+    pushToHistory(chatId, 'user', userText);
+    pushToHistory(chatId, 'assistant', calendarResponse);
     return formatForTelegram(calendarResponse);
   }
 
@@ -606,8 +635,11 @@ Decisão sua: [só o que depende de Talita — se não houver, omita]
 Eu já aciono: [quem do squad faz o quê — acione de verdade via delegação]
 
 Máximo 200 palavras. Sem emoji. Sem introdução.`;
-    const response = formatForTelegram(await callClaude(system, prompt, 500));
-    registrarNaMemoria(userText, response).catch(() => {});
+    const raw = await callClaude(system, prompt, 1000);
+    const response = formatForTelegram(raw);
+    registrarNaMemoria(userText, raw).catch(() => {});
+    pushToHistory(chatId, 'user', userText);
+    pushToHistory(chatId, 'assistant', raw);
     return response;
   }
 
@@ -633,14 +665,22 @@ Risco: [o que pode dar errado]
 Minha recomendação: [qual e por quê em 1 frase direta]
 
 Sem emoji. Sem introdução. Direto ao ponto.`;
-    const response = formatForTelegram(await callClaude(system, prompt, 500));
-    registrarNaMemoria(userText, response).catch(() => {});
+    const raw = await callClaude(system, prompt, 1000);
+    const response = formatForTelegram(raw);
+    registrarNaMemoria(userText, raw).catch(() => {});
+    pushToHistory(chatId, 'user', userText);
+    pushToHistory(chatId, 'assistant', raw);
     return response;
   }
 
-  // Conversa padrão
-  const response = formatForTelegram(await callClaude(system, userText, 600));
-  registrarNaMemoria(userText, response).catch(() => {});
+  // Conversa padrão — com histórico completo da sessão
+  const history = getHistory(chatId);
+  const messages = [...history, { role: 'user', content: userText }];
+  const raw = await callClaudeWithHistory(system, messages, 1500);
+  const response = formatForTelegram(raw);
+  registrarNaMemoria(userText, raw).catch(() => {});
+  pushToHistory(chatId, 'user', userText);
+  pushToHistory(chatId, 'assistant', raw);
   return response;
 }
 
@@ -762,7 +802,7 @@ async function handleTelegramUpdate(update, logger) {
     acionarOnboarding(userText, msg.chatId, logger).catch(() => {});
   }
 
-  const response = await processMariahText(userText, sourceIsVoice ? 'Audio' : 'Telegram');
+  const response = await processMariahText(userText, sourceIsVoice ? 'Audio' : 'Telegram', msg.chatId);
 
   // Coordena squad em paralelo — não bloqueia a resposta para Talita
   detectarEDelegarSquad(userText, response, logger).catch(() => {});

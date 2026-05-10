@@ -1,7 +1,7 @@
 'use strict';
 
 const { readAllMariahMemory, writeMariahMemory } = require('./index');
-const { callClaude } = require('../claude');
+const { callClaudeFast } = require('../claude');
 
 // ─── BOOT: monta contexto de memória para o system prompt ────
 
@@ -72,7 +72,7 @@ async function alertarContradicaoTelegram(descricao) {
 async function verificarContradicao(novaDecisao, decisoesExistentes) {
   if (!decisoesExistentes?.trim()) return null;
   try {
-    const raw = await callClaude(
+    const raw = await callClaudeFast(
       'Você verifica contradições entre decisões. Retorne JSON válido sem markdown: {"contradiz": true ou false, "descricao": "qual contradição ou null"}',
       `Nova decisão: "${novaDecisao}"\n\nDecisões anteriores:\n${decisoesExistentes.slice(0, 800)}`,
       150
@@ -88,7 +88,7 @@ async function registrarNaMemoria(userText, mariahResponse) {
   try {
     const prompt = `Mensagem da Talita: "${userText.slice(0, 400)}"\n\nResposta da Mariah: "${mariahResponse.slice(0, 400)}"\n\nO que deve ser registrado na memória permanente?`;
 
-    const raw = await callClaude(REGISTRO_SYSTEM, prompt, 200);
+    const raw = await callClaudeFast(REGISTRO_SYSTEM, prompt, 300);
     const jsonStr = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const parsed = JSON.parse(jsonStr);
 
@@ -135,7 +135,7 @@ async function manutencaoSemanal() {
 
     // Limpa e consolida pendências
     if (memories.pendencias?.trim()) {
-      const cleaned = await callClaude(MANUTENCAO_PENDENCIAS_SYSTEM, memories.pendencias, 300);
+      const cleaned = await callClaudeFast(MANUTENCAO_PENDENCIAS_SYSTEM, memories.pendencias, 400);
       await writeMariahMemory('pendencias', cleaned.trim());
     }
 
@@ -147,7 +147,7 @@ async function manutencaoSemanal() {
     ].filter(Boolean).join('\n\n');
 
     if (partes) {
-      const contexto = await callClaude(CONTEXTO_SEMANAL_SYSTEM, partes, 200);
+      const contexto = await callClaudeFast(CONTEXTO_SEMANAL_SYSTEM, partes, 300);
       const semana = new Date().toLocaleDateString('pt-BR');
       await writeMariahMemory('contexto_semanal', `[Semana de ${semana}]\n${contexto.trim()}`);
     }
