@@ -1003,7 +1003,63 @@ function registerTelegramMariah(receiver, logger, slackClient) {
     }
   });
 
-  logger.info('Telegram Mariah registrado: /telegram/webhook | /telegram/status | /mariah/shortcut');
+  // ── /mariah/checkin — geolocalização iPhone ──────────────────
+  // Chamado pelo Atalho quando Talita chega ou sai de um local
+  receiver.router.post('/mariah/checkin', async function(req, res) {
+    const expectedSecret = process.env.MARIAH_SHORTCUT_SECRET || process.env.TELEGRAM_WEBHOOK_SECRET;
+    const receivedSecret = (req.headers.authorization || '').replace(/^Bearer\s+/i, '') || req.query.secret;
+    if (expectedSecret && receivedSecret !== expectedSecret) {
+      return res.status(401).json({ ok: false, error: 'secret_invalid' });
+    }
+
+    try {
+      const body = await readJsonBody(req);
+      const tipo = String(body.tipo || 'chegada').toLowerCase(); // 'chegada' ou 'saida'
+      const local = String(body.local || 'academia').toLowerCase();
+      const chatId = body.chat_id || process.env.TELEGRAM_ALLOWED_CHAT_ID;
+
+      const brtNow = new Intl.DateTimeFormat('pt-BR', {
+        timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit',
+      }).format(new Date());
+
+      let mensagem = '';
+      let registroMemoria = '';
+
+      if (tipo === 'chegada') {
+        const msgMap = {
+          pilates:  `${brtNow} — Chegou no pilates. Vai bem.`,
+          academia: `${brtNow} — Chegou na academia. Treino iniciado.`,
+          studio:   `${brtNow} — Chegou no estúdio. Gravação iniciada?`,
+        };
+        mensagem = msgMap[local] || `${brtNow} — Check-in: ${local}.`;
+        registroMemoria = `Chegou em: ${local} às ${brtNow}`;
+      } else {
+        const msgMap = {
+          pilates:  `Como foi o pilates? Responde aqui — registra na memória.`,
+          academia: `Treino concluído. Como foi? Registra aqui.`,
+          studio:   `Saiu do estúdio. Gravação foi?`,
+        };
+        mensagem = msgMap[local] || `Saiu de: ${local} às ${brtNow}.`;
+        registroMemoria = `Saiu de: ${local} às ${brtNow}`;
+      }
+
+      // Registra na memória da Mariah
+      const { writeMariahMemory, readMariahMemory } = require('../memory/index');
+      const hoje = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const atual = await readMariahMemory('preferencias') || '';
+      await writeMariahMemory('preferencias', atual + `\n[${hoje}] ${registroMemoria}`);
+
+      // Manda mensagem no Telegram
+      if (chatId) await sendTelegramMessage(chatId, mensagem);
+
+      res.json({ ok: true, mensagem });
+    } catch (err) {
+      logger.error('Erro no check-in:', err.message);
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  logger.info('Telegram Mariah registrado: /telegram/webhook | /telegram/status | /mariah/shortcut | /mariah/checkin');
 }
 
 module.exports = { registerTelegramMariah, handleTelegramUpdate, setTelegramWebhook, sendTelegramMessage, getMilestoneContext };
