@@ -991,15 +991,22 @@ function registerTelegramMariah(receiver, logger, slackClient) {
       const body = await readJsonBody(req);
       const text = String(body.text || body.message || '').trim();
       if (!text) return res.status(400).json({ ok: false, error: 'text_required' });
-      const response = await processMariahText(text, 'Atalho iPhone');
+
       const chatId = body.chat_id || process.env.TELEGRAM_ALLOWED_CHAT_ID;
-      if (body.send_to_telegram && chatId) {
-        await sendTelegramMessage(chatId, response);
-      }
-      res.json({ ok: true, response });
+
+      // Responde imediatamente para não dar timeout no iOS Shortcuts
+      res.json({ ok: true, response: 'Processando...' });
+
+      // Processa e envia pelo Telegram em background
+      processMariahText(text, 'Atalho iPhone')
+        .then(response => {
+          if (chatId) return sendTelegramMessage(chatId, response);
+        })
+        .catch(err => logger.error('Erro no Atalho da Mariah:', err.message));
+
     } catch (err) {
       logger.error('Erro no Atalho da Mariah:', err.message);
-      res.status(500).json({ ok: false, error: err.message });
+      if (!res.headersSent) res.status(500).json({ ok: false, error: err.message });
     }
   });
 
