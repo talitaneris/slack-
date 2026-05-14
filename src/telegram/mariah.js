@@ -221,6 +221,10 @@ const _conversationHistory = new Map();
 const _historyLoaded = new Set(); // chatIds já carregados nesta sessão
 const HISTORY_MAX_PAIRS = 25; // 25 trocas = 50 mensagens — contexto de um dia inteiro
 
+function historyKey(chatId) {
+  return `history_${String(chatId)}`;
+}
+
 async function ensureHistoryLoaded(chatId) {
   if (!chatId) return;
   const id = String(chatId);
@@ -228,7 +232,7 @@ async function ensureHistoryLoaded(chatId) {
   _historyLoaded.add(id);
 
   try {
-    const raw = await readMariahMemory('history');
+    const raw = await readMariahMemory(historyKey(chatId));
     if (raw && raw.trim()) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -252,8 +256,8 @@ function pushToHistory(chatId, role, content) {
   hist.push({ role, content: String(content).slice(0, 1500) });
   if (hist.length > HISTORY_MAX_PAIRS * 2) hist.splice(0, 2);
   _conversationHistory.set(id, hist);
-  // Persiste de forma assíncrona — não bloqueia a resposta para Talita
-  writeMariahMemory('history', JSON.stringify(hist)).catch(() => {});
+  // Persiste por canal — cada chatId tem seu próprio histórico
+  writeMariahMemory(historyKey(id), JSON.stringify(hist)).catch(() => {});
 }
 
 function isPassandoTrabalhoParaTalita(texto) {
@@ -759,7 +763,7 @@ function isZoomRequest(text) {
 // ─── NOTION ───────────────────────────────────────────────────
 const { isConfigured: isNotionConfigured, searchNotion, readPage, queryDatabase, createPage } = require('../services/notion');
 
-async function processNotionRequest(userText, systemPrompt) {
+async function processNotionRequest(userText, _systemPrompt) {
   if (!isNotionConfigured()) return null;
 
   const lower = userText.toLowerCase();
@@ -1178,7 +1182,7 @@ async function handleTelegramUpdate(update, logger) {
     return;
   }
 
-  // Determina o modo do canal (geral, conteudo, negocio, financeiro, pessoal)
+  // Determina o modo do canal
   const channelMode = getChannelMode(msg.chatId) || 'geral';
 
   // Carrega histórico do Supabase na primeira mensagem da sessão (após restart)
@@ -1186,6 +1190,8 @@ async function handleTelegramUpdate(update, logger) {
 
   let userText = msg.text;
   let sourceIsVoice = false;
+
+  // ── Voz ──
   if (!userText && msg.hasVoice) {
     try {
       userText = await transcribeVoice(msg.voiceFileId);
@@ -1197,39 +1203,54 @@ async function handleTelegramUpdate(update, logger) {
       return;
     }
   }
-  // ── Imagem: lê e analisa com visão do Claude ──
+
+  // ── Imagem: analisa com Claude vision ──
   if (msg.hasPhoto && msg.photoFileId) {
-    const system = await buildMariahSystem(channelMode);
-    const caption = msg.text || 'Analise esta imagem e responda como Mariah.';
-    const response = await analyzePhoto(msg.photoFileId, caption, system);
-    await sendTelegramMessage(msg.chatId, response);
-    registrarNaMemoria(caption, response).catch(() => {});
+    try {
+      const system = await buildMariahSystem(channelMode);
+      const caption = msg.text || 'Analise esta imagem e responda como Mariah.';
+      const response = await analyzePhoto(msg.photoFileId, caption, system);
+      await sendTelegramMessage(msg.chatId, response);
+      registrarNaMemoria(caption, response).catch(() => {});
+    } catch (err) {
+      logger.error('Erro ao analisar imagem:', err.message);
+      await sendTelegramMessage(msg.chatId, 'Não consegui analisar a imagem.');
+    }
     return;
   }
 
   if (!userText) return;
 
-  // ── URL: detecta links e injeta o conteúdo na mensagem ──
-  const urls = extractUrls(userText);
+  // ── URL: só busca conteúdo se há link E não é link do Telegram/API ──
+  const urls = extractUrls(userText).filter(u =>
+    !u.includes('t.me') && !u.includes('telegram') && !u.includes('api.telegram')
+  );
   if (urls.length > 0) {
-    const conteudos = await Promise.all(urls.map(async url => {
-      const conteudo = await fetchUrl(url);
-      return `[Conteúdo de ${url}]:\n${conteudo}`;
-    }));
-    userText = userText + '\n\n' + conteudos.join('\n\n');
+    try {
+      const conteudos = await Promise.all(urls.map(async url => {
+        const conteudo = await fetchUrl(url);
+        return `[Conteúdo de ${url}]:\n${conteudo}`;
+      }));
+      userText = userText + '\n\n' + conteudos.join('\n\n');
+    } catch (err) {
+      logger.warn('Erro ao buscar URL:', err.message);
+    }
   }
 
-  // ── Busca web: detecta intenção de pesquisa ──
-  const buscaRegex = /\b(busca|pesquisa|procura|acha|encontra|pesquise|verifique|quanto custa|qual o preço|melhor (voo|hotel|hospedagem|passagem)|voos? (para|de)|hoteis? em)\b/i;
-  if (buscaRegex.test(userText) && !urls.length) {
-    const queryMatch = userText.match(/(?:busca|pesquisa|procura|acha|encontra|pesquise|verifique)\s+(.+)/i);
-    const query = queryMatch ? queryMatch[1] : userText;
-    const resultados = await webSearch(query);
-    userText = userText + '\n\n[Resultados da busca]:\n' + resultados;
+  // ── Busca web: só dispara com comando explícito ──
+  const buscaExplicita = /^(busca|pesquisa|pesquise|procure|encontre|quanto custa|qual o preço|voos? (para|de)|hoteis? em)\s+/i;
+  if (buscaExplicita.test(userText.trim()) && !urls.length) {
+    try {
+      const query = userText.replace(buscaExplicita, '').trim();
+      const resultados = await webSearch(query);
+      userText = userText + '\n\n[Resultados da busca]:\n' + resultados;
+    } catch (err) {
+      logger.warn('Erro na busca web:', err.message);
+    }
   }
 
-  // ── Notion: detecta intenção e executa ──
-  const notionResponse = await processNotionRequest(userText, await buildMariahSystem(channelMode));
+  // ── Notion: detecta intenção e executa (sem chamar buildMariahSystem de novo) ──
+  const notionResponse = await processNotionRequest(userText, null);
   if (notionResponse) {
     await sendTelegramMessage(msg.chatId, notionResponse);
     registrarNaMemoria(userText, notionResponse).catch(() => {});

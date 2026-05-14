@@ -148,8 +148,10 @@ Regras:
 
 async function consolidarMemoriaDiaria() {
   try {
-    // Lê histórico do dia de todas as sessões conhecidas
-    const histRaw = await readMariahMemory('history');
+    // Lê histórico do canal principal (geral) — chave legada + nova
+    const chatId = process.env.TELEGRAM_ALLOWED_CHAT_ID || '';
+    const histKey = chatId ? `history_${chatId}` : 'history';
+    const histRaw = await readMariahMemory(histKey);
     if (!histRaw?.trim()) {
       // Sem histórico — registra episódio mínimo
       const brtNow = new Date(Date.now() - 3 * 60 * 60 * 1000)
