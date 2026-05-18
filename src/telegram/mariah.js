@@ -1109,9 +1109,13 @@ function extractTelegramMessage(update) {
 const _unknownChats = new Map(); // chatId → { title, date }
 
 function isAllowedChat(chatId) {
+  const id = String(chatId);
   // Sem configuração = aceita todos os chats (modo desenvolvimento)
   if (_channelConfig.size === 0) return true;
-  return _channelConfig.has(String(chatId));
+  // Sempre permite o chat principal independente de TELEGRAM_CHANNELS
+  const principal = process.env.TELEGRAM_ALLOWED_CHAT_ID;
+  if (principal && id === String(principal)) return true;
+  return _channelConfig.has(id);
 }
 
 function registerUnknownChat(chatId, title) {
