@@ -1,6 +1,6 @@
 // Análise de IA das notícias do dia — gera pautas quentes com ângulo de posicionamento da Talita
 
-const { callClaude } = require('../claude');
+const { callClaudeFast: callClaude } = require('../claude');
 
 const SYSTEM_ANALISAR = `
 Você é um estrategista de conteúdo da Talita Neris — estrategista de crescimento de negócios para empreendedoras digitais.

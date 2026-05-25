@@ -1,5 +1,5 @@
 const cron = require('node-cron');
-const { callClaude } = require('../claude');
+const { callClaudeFast: callClaude } = require('../claude');
 const { AGENTS } = require('../agents');
 const { refreshAll, getPautas } = require('../curadoria/crawler');
 const { getPendingFor, cleanup } = require('../queue/index');
