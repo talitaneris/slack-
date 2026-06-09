@@ -9,6 +9,7 @@ const { getPrivateContextForAgent } = require('../privateContext');
 const { listarEventos } = require('../services/calendar');
 const { listarEmailsManha, isEmailConfigured, enviarEmail } = require('../services/email');
 const { criarReuniaoZoom, isZoomConfigured } = require('../services/zoom');
+const { analisarAulasVsMetodologia, isYouTubeConfigured } = require('../services/youtube');
 
 const TELEGRAM_API = 'https://api.telegram.org';
 
@@ -1251,6 +1252,20 @@ async function handleTelegramUpdate(update, logger) {
     } catch (err) {
       logger.warn('Erro na busca web:', err.message);
     }
+  }
+
+  // ── YouTube: análise de aulas vs metodologia ──
+  const youtubeRegex = /\b(analisa|analise|analisar).*(aula|video|vídeo|youtube|canal)\b|\b(aula|video|vídeo).*(analisa|analise|analisar|vs|metodologia)\b/i;
+  if (youtubeRegex.test(userText) && isYouTubeConfigured()) {
+    try {
+      await sendTelegramMessage(msg.chatId, 'Analisando suas aulas no YouTube... pode demorar 1-2 minutos.');
+      const relatorio = await analisarAulasVsMetodologia({ callClaudeFn: callClaude });
+      await sendTelegramMessage(msg.chatId, relatorio);
+      registrarNaMemoria(userText, relatorio).catch(() => {});
+    } catch (err) {
+      await sendTelegramMessage(msg.chatId, `Erro ao analisar YouTube: ${err.message}`);
+    }
+    return;
   }
 
   // ── Notion: detecta intenção e executa (sem chamar buildMariahSystem de novo) ──
