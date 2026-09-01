@@ -1,7 +1,8 @@
 require('dotenv').config();
                                                                                                                  
   const https = require('https');
-  const path  = require('path');                                                                                 
+  const fs    = require('fs');
+  const path  = require('path');
   const { App, ExpressReceiver } = require('@slack/bolt');  
   const { handleMention } = require('./handlers/mention');
   const { initScheduler } = require('./scheduler/routines');                                                     
@@ -46,11 +47,35 @@ receiver.router.get('/sistemadeconteudo', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/sistemadeconteudo.html'));
 });
                                                                                                                  
-  // Consultoria Bruna Della Flora                          
+  // Consultoria Bruna Della Flora
   receiver.router.get('/consultoriabrunadellaflora', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/consultoriabrunadellaflora.html'));                             
+    res.sendFile(path.join(__dirname, '../public/consultoriabrunadellaflora.html'));
   });
-                                                                                                                 
+
+  // Oficina IA na Prática para Negócios — build estático (Vite) servido sob /oficina-ia
+  const OFICINA_IA_DIR = path.join(__dirname, '../public/oficina-ia');
+  const OFICINA_IA_MIME = {
+    '.html': 'text/html; charset=utf-8',
+    '.js': 'application/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.svg': 'image/svg+xml',
+    '.png': 'image/png',
+    '.ico': 'image/x-icon',
+  };
+  receiver.router.get(/^\/oficina-ia(\/.*)?$/, (req, res) => {
+    const requested = req.params[0] || '/';
+    const relativePath = requested === '/' ? 'index.html' : requested.slice(1);
+    const filePath = path.resolve(OFICINA_IA_DIR, relativePath);
+    if (filePath !== OFICINA_IA_DIR && !filePath.startsWith(OFICINA_IA_DIR + path.sep)) {
+      return res.status(403).end();
+    }
+    fs.access(filePath, fs.constants.R_OK, (err) => {
+      const finalPath = err ? path.join(OFICINA_IA_DIR, 'index.html') : filePath;
+      res.setHeader('Content-Type', OFICINA_IA_MIME[path.extname(finalPath)] || 'application/octet-stream');
+      res.sendFile(finalPath);
+    });
+  });
+
   receiver.router.get('/curadoria/api', async (req, res) => {
     try {
       if (isCacheStale() || req.query.force) await refreshAll();                                                 
