@@ -84,7 +84,7 @@ function formPage({ error } = {}) {
   const errorHtml = error ? `<div class="error">${escapeHtml(error)}</div>` : '';
   return pageShell('Inscrição — Oficina IA na Prática para Negócios', `
     <p class="eyebrow">Quase lá</p>
-    <h1>Conta pra gente<br><em>sobre o seu negócio</em></h1>
+    <h1>Antes do dia 26,<br><em>queremos te conhecer.</em></h1>
     <p class="lede">Sua vaga está garantida. Preencha esses dados rápidos pra gente já chegar no dia da oficina sabendo mais sobre você e o seu negócio.</p>
     ${errorHtml}
     <form method="POST" action="/oficina-ia/inscricao">
