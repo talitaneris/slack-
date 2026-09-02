@@ -12,6 +12,7 @@ require('dotenv').config();
   const { registerTelegramMariah, setTelegramWebhook } = require('./telegram/mariah');
   const { registerGoogleOAuth } = require('./google/oauth');
   const { registerZoomWebhook } = require('./webhooks/zoom');
+  const { registerOficinaIaInscricao } = require('./oficina-ia/inscricao');
    
   // Validação das variáveis de ambiente obrigatórias                                                            
   const REQUIRED_ENV = ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET', 'ANTHROPIC_API_KEY'];
@@ -51,6 +52,9 @@ receiver.router.get('/sistemadeconteudo', (req, res) => {
   receiver.router.get('/consultoriabrunadellaflora', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/consultoriabrunadellaflora.html'));
   });
+
+  // Inscrição pós-pagamento da Oficina IA (precisa vir antes da rota geral /oficina-ia abaixo)
+  registerOficinaIaInscricao(receiver);
 
   // Oficina IA na Prática para Negócios — build estático (Vite) servido sob /oficina-ia
   const OFICINA_IA_DIR = path.join(__dirname, '../public/oficina-ia');
