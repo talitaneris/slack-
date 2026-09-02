@@ -108,10 +108,10 @@ function formPage({ error } = {}) {
         <label for="faturamento">Faturamento aproximado (mensal)</label>
         <select id="faturamento" name="faturamento" required>
           <option value="">Selecione</option>
-          <option value="Até R$ 10 mil">Até R$ 10 mil</option>
           <option value="De R$ 10 mil a R$ 30 mil">De R$ 10 mil a R$ 30 mil</option>
           <option value="De R$ 30 mil a R$ 100 mil">De R$ 30 mil a R$ 100 mil</option>
-          <option value="Acima de R$ 100 mil">Acima de R$ 100 mil</option>
+          <option value="De R$ 100 mil a R$ 300 mil">De R$ 100 mil a R$ 300 mil</option>
+          <option value="Acima de R$ 500 mil">Acima de R$ 500 mil</option>
           <option value="Prefiro não informar">Prefiro não informar</option>
         </select>
       </div>
