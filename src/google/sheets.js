@@ -13,7 +13,7 @@
 const { google } = require('googleapis');
 
 const SHEET_ID = process.env.OFICINA_IA_SHEET_ID || '1nVkRKx6XbueqomyvpLvLTBYpnvHCNGbq2g2cuNd4w2A';
-const SHEET_RANGE = 'A:I';
+const SHEET_RANGE = 'A:K';
 
 function getAuth() {
   const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN } = process.env;
@@ -38,7 +38,9 @@ function getAuth() {
  * @param {string} inscricao.telefone
  * @param {string} inscricao.negocio
  * @param {string} inscricao.segmento
- * @param {string} inscricao.porte
+ * @param {string} [inscricao.instagram]
+ * @param {string} inscricao.equipe
+ * @param {string} inscricao.faturamento
  * @param {string} inscricao.usaIA
  * @param {string} inscricao.desafio
  */
@@ -62,9 +64,11 @@ async function registrarInscricaoOficinaIa(inscricao) {
         inscricao.telefone || '',
         inscricao.negocio || '',
         inscricao.segmento || '',
-        inscricao.porte || '',
+        inscricao.equipe || '',
         inscricao.usaIA || '',
         inscricao.desafio || '',
+        inscricao.instagram || '',
+        inscricao.faturamento || '',
       ]],
     },
   });

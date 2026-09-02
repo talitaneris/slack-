@@ -93,7 +93,28 @@ function formPage({ error } = {}) {
       <div class="field"><label for="telefone">Telefone / WhatsApp</label><input id="telefone" name="telefone" type="tel" required></div>
       <div class="field"><label for="negocio">Nome do negócio</label><input id="negocio" name="negocio" type="text" required></div>
       <div class="field"><label for="segmento">Segmento do negócio</label><input id="segmento" name="segmento" type="text" placeholder="Ex: transporte, moda, consultoria, estética, serviços..." required></div>
-      <div class="field"><label for="porte">Tamanho da equipe e/ou faturamento aproximado</label><input id="porte" name="porte" type="text" placeholder="Ex: só eu, 3 pessoas, R$ 20 mil/mês..." required></div>
+      <div class="field"><label for="instagram">Instagram do negócio</label><input id="instagram" name="instagram" type="text" placeholder="@seuusuario"></div>
+      <div class="field">
+        <label for="equipe">Tamanho da equipe</label>
+        <select id="equipe" name="equipe" required>
+          <option value="">Selecione</option>
+          <option value="Só eu (autônoma/o)">Só eu (autônoma/o)</option>
+          <option value="2 a 5 pessoas">2 a 5 pessoas</option>
+          <option value="6 a 15 pessoas">6 a 15 pessoas</option>
+          <option value="Mais de 15 pessoas">Mais de 15 pessoas</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="faturamento">Faturamento aproximado (mensal)</label>
+        <select id="faturamento" name="faturamento" required>
+          <option value="">Selecione</option>
+          <option value="Até R$ 10 mil">Até R$ 10 mil</option>
+          <option value="De R$ 10 mil a R$ 30 mil">De R$ 10 mil a R$ 30 mil</option>
+          <option value="De R$ 30 mil a R$ 100 mil">De R$ 30 mil a R$ 100 mil</option>
+          <option value="Acima de R$ 100 mil">Acima de R$ 100 mil</option>
+          <option value="Prefiro não informar">Prefiro não informar</option>
+        </select>
+      </div>
       <div class="field">
         <label for="usaIA">Já usa IA no negócio?</label>
         <select id="usaIA" name="usaIA" required>
@@ -104,7 +125,7 @@ function formPage({ error } = {}) {
           <option value="Uso bastante e quero aprofundar">Uso bastante e quero aprofundar</option>
         </select>
       </div>
-      <div class="field"><label for="desafio">Principal desafio atual no negócio</label><textarea id="desafio" name="desafio" required></textarea></div>
+      <div class="field"><label for="desafio">Principal desafio na implementação de IA no negócio</label><textarea id="desafio" name="desafio" required></textarea></div>
       <button class="primary-cta" type="submit">Confirmar inscrição</button>
     </form>
   `);
@@ -135,13 +156,13 @@ function registerOficinaIaInscricao(receiver, logger = console) {
   receiver.router.post('/oficina-ia/inscricao', async (req, res) => {
     try {
       const body = await readFormBody(req);
-      const { nome, email, telefone, negocio, segmento, porte, usaIA, desafio } = body;
+      const { nome, email, telefone, negocio, segmento, instagram, equipe, faturamento, usaIA, desafio } = body;
 
-      if (!nome || !email || !telefone || !negocio || !segmento || !porte || !usaIA || !desafio) {
+      if (!nome || !email || !telefone || !negocio || !segmento || !equipe || !faturamento || !usaIA || !desafio) {
         return res.status(400).send(formPage({ error: 'Preencha todos os campos antes de enviar.' }));
       }
 
-      await registrarInscricaoOficinaIa({ nome, email, telefone, negocio, segmento, porte, usaIA, desafio });
+      await registrarInscricaoOficinaIa({ nome, email, telefone, negocio, segmento, instagram, equipe, faturamento, usaIA, desafio });
       res.send(confirmationPage({ nome }));
     } catch (err) {
       logger.error('Erro ao registrar inscrição da Oficina IA:', err.message);
