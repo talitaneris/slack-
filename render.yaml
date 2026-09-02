@@ -29,3 +29,5 @@ services:
         sync: false
       - key: GOOGLE_CALENDAR_ID
         value: primary
+      - key: OFICINA_IA_SHEET_ID
+        sync: false
