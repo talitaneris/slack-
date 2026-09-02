@@ -53,23 +53,45 @@ receiver.router.get('/sistemadeconteudo', (req, res) => {
 
   // Oficina IA na Prática para Negócios — proxy reverso para a página hospedada no Manus
   const OFICINA_IA_ORIGIN = 'https://oficinaia-d8ylxhtw.manus.space';
-  receiver.router.get(/^\/oficina-ia(\/.*)?$/, (req, res) => {
-    const suffix = req.params[0] || '/';
-    const queryIndex = req.url.indexOf('?');
-    const query = queryIndex === -1 ? '' : req.url.slice(queryIndex);
-    const targetUrl = OFICINA_IA_ORIGIN + suffix + query;
+  const PROXY_HEADERS_TO_FORWARD = ['content-type', 'content-encoding', 'cache-control', 'etag', 'last-modified'];
 
+  function fetchOficinaIa(targetUrl, res, redirectsLeft) {
     https
-      .get(targetUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; TalitaNerisProxy/1.0)' } }, (proxyRes) => {
-        res.status(proxyRes.statusCode || 502);
-        const contentType = proxyRes.headers['content-type'];
-        if (contentType) res.setHeader('Content-Type', contentType);
-        proxyRes.pipe(res);
-      })
+      .get(
+        targetUrl,
+        {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; TalitaNerisProxy/1.0)',
+            'Accept-Encoding': 'identity',
+          },
+        },
+        (proxyRes) => {
+          const status = proxyRes.statusCode || 502;
+
+          if (status >= 300 && status < 400 && proxyRes.headers.location && redirectsLeft > 0) {
+            proxyRes.resume();
+            const nextUrl = new URL(proxyRes.headers.location, targetUrl).toString();
+            return fetchOficinaIa(nextUrl, res, redirectsLeft - 1);
+          }
+
+          res.status(status);
+          for (const header of PROXY_HEADERS_TO_FORWARD) {
+            if (proxyRes.headers[header]) res.setHeader(header, proxyRes.headers[header]);
+          }
+          proxyRes.pipe(res);
+        },
+      )
       .on('error', (err) => {
         console.error('Erro no proxy /oficina-ia:', err.message);
         res.status(502).send('Não foi possível carregar a página da Oficina IA no momento.');
       });
+  }
+
+  receiver.router.get(/^\/oficina-ia(\/.*)?$/, (req, res) => {
+    const suffix = req.params[0] || '/';
+    const queryIndex = req.url.indexOf('?');
+    const query = queryIndex === -1 ? '' : req.url.slice(queryIndex);
+    fetchOficinaIa(OFICINA_IA_ORIGIN + suffix + query, res, 3);
   });
 
   receiver.router.get('/curadoria/api', async (req, res) => {
