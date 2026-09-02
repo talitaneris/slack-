@@ -71,6 +71,7 @@ function pageShell(title, bodyHtml) {
   .confirm-card h1 { color:var(--paper); }
   .confirm-card p { color:rgba(246,243,236,.78); line-height:1.6; font-size:.9375rem; }
   .confirm-facts { border-top:1px solid rgba(255,250,245,.15); margin-top:24px; padding-top:20px; display:flex; flex-direction:column; gap:10px; font-family:"IBM Plex Mono",monospace; font-size:.75rem; letter-spacing:.06em; text-transform:uppercase; color:rgba(246,243,236,.85); }
+  .confirm-facts .confirm-address { text-transform:none; letter-spacing:normal; line-height:1.5; }
   .whatsapp-link { display:inline-flex; align-items:center; gap:8px; margin-top:28px; color:var(--paper); border-bottom:1px solid rgba(255,250,245,.4); padding-bottom:2px; text-decoration:none; font-family:"IBM Plex Mono",monospace; font-size:.75rem; letter-spacing:.1em; text-transform:uppercase; }
 </style>
 </head>
@@ -137,11 +138,13 @@ function confirmationPage({ nome }) {
     <div class="confirm-card">
       <p class="eyebrow">Inscrição confirmada</p>
       <h1>${primeiroNome ? `${escapeHtml(primeiroNome)}, ` : ''}nos vemos<br><em>dia 26 de setembro.</em></h1>
-      <p>Recebemos seus dados. Nos próximos dias você recebe por e-mail e WhatsApp o endereço completo e mais detalhes práticos do dia.</p>
+      <p>Recebemos seus dados. Guarde o endereço abaixo — mais detalhes práticos do dia chegam por e-mail e WhatsApp nos próximos dias.</p>
       <div class="confirm-facts">
         <span>Data — 26/09/2026</span>
         <span>Horário — 10h às 18h</span>
         <span>Formato — Presencial</span>
+        <span>Local — Empresarial Monte Carlo, Alphaville</span>
+        <span class="confirm-address">Endereço — Av. Ipanema, 165 - Empresarial 18 do Forte, Barueri - SP, CEP 06472-002</span>
       </div>
       <a class="whatsapp-link" href="${WHATSAPP_URL}" target="_blank" rel="noreferrer">Falar no WhatsApp ↗</a>
     </div>
