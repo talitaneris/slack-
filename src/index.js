@@ -1,6 +1,7 @@
 require('dotenv').config();
                                                                                                                  
   const https = require('https');
+  const fs    = require('fs');
   const path  = require('path');
   const { App, ExpressReceiver } = require('@slack/bolt');  
   const { handleMention } = require('./handlers/mention');
@@ -51,47 +52,28 @@ receiver.router.get('/sistemadeconteudo', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/consultoriabrunadellaflora.html'));
   });
 
-  // Oficina IA na Prática para Negócios — proxy reverso para a página hospedada no Manus
-  const OFICINA_IA_ORIGIN = 'https://oficinaia-d8ylxhtw.manus.space';
-  const PROXY_HEADERS_TO_FORWARD = ['content-type', 'content-encoding', 'cache-control', 'etag', 'last-modified'];
-
-  function fetchOficinaIa(targetUrl, res, redirectsLeft) {
-    https
-      .get(
-        targetUrl,
-        {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; TalitaNerisProxy/1.0)',
-            'Accept-Encoding': 'identity',
-          },
-        },
-        (proxyRes) => {
-          const status = proxyRes.statusCode || 502;
-
-          if (status >= 300 && status < 400 && proxyRes.headers.location && redirectsLeft > 0) {
-            proxyRes.resume();
-            const nextUrl = new URL(proxyRes.headers.location, targetUrl).toString();
-            return fetchOficinaIa(nextUrl, res, redirectsLeft - 1);
-          }
-
-          res.status(status);
-          for (const header of PROXY_HEADERS_TO_FORWARD) {
-            if (proxyRes.headers[header]) res.setHeader(header, proxyRes.headers[header]);
-          }
-          proxyRes.pipe(res);
-        },
-      )
-      .on('error', (err) => {
-        console.error('Erro no proxy /oficina-ia:', err.message);
-        res.status(502).send('Não foi possível carregar a página da Oficina IA no momento.');
-      });
-  }
-
+  // Oficina IA na Prática para Negócios — build estático (Vite) servido sob /oficina-ia
+  const OFICINA_IA_DIR = path.join(__dirname, '../public/oficina-ia');
+  const OFICINA_IA_MIME = {
+    '.html': 'text/html; charset=utf-8',
+    '.js': 'application/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.svg': 'image/svg+xml',
+    '.png': 'image/png',
+    '.ico': 'image/x-icon',
+  };
   receiver.router.get(/^\/oficina-ia(\/.*)?$/, (req, res) => {
-    const suffix = req.params[0] || '/';
-    const queryIndex = req.url.indexOf('?');
-    const query = queryIndex === -1 ? '' : req.url.slice(queryIndex);
-    fetchOficinaIa(OFICINA_IA_ORIGIN + suffix + query, res, 3);
+    const requested = req.params[0] || '/';
+    const relativePath = requested === '/' ? 'index.html' : requested.slice(1);
+    const filePath = path.resolve(OFICINA_IA_DIR, relativePath);
+    if (filePath !== OFICINA_IA_DIR && !filePath.startsWith(OFICINA_IA_DIR + path.sep)) {
+      return res.status(403).end();
+    }
+    fs.access(filePath, fs.constants.R_OK, (err) => {
+      const finalPath = err ? path.join(OFICINA_IA_DIR, 'index.html') : filePath;
+      res.setHeader('Content-Type', OFICINA_IA_MIME[path.extname(finalPath)] || 'application/octet-stream');
+      res.sendFile(finalPath);
+    });
   });
 
   receiver.router.get('/curadoria/api', async (req, res) => {
