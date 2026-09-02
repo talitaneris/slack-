@@ -1,7 +1,6 @@
 require('dotenv').config();
                                                                                                                  
   const https = require('https');
-  const fs    = require('fs');
   const path  = require('path');
   const { App, ExpressReceiver } = require('@slack/bolt');  
   const { handleMention } = require('./handlers/mention');
@@ -52,28 +51,25 @@ receiver.router.get('/sistemadeconteudo', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/consultoriabrunadellaflora.html'));
   });
 
-  // Oficina IA na Prática para Negócios — build estático (Vite) servido sob /oficina-ia
-  const OFICINA_IA_DIR = path.join(__dirname, '../public/oficina-ia');
-  const OFICINA_IA_MIME = {
-    '.html': 'text/html; charset=utf-8',
-    '.js': 'application/javascript; charset=utf-8',
-    '.css': 'text/css; charset=utf-8',
-    '.svg': 'image/svg+xml',
-    '.png': 'image/png',
-    '.ico': 'image/x-icon',
-  };
+  // Oficina IA na Prática para Negócios — proxy reverso para a página hospedada no Manus
+  const OFICINA_IA_ORIGIN = 'https://oficinaia-d8ylxhtw.manus.space';
   receiver.router.get(/^\/oficina-ia(\/.*)?$/, (req, res) => {
-    const requested = req.params[0] || '/';
-    const relativePath = requested === '/' ? 'index.html' : requested.slice(1);
-    const filePath = path.resolve(OFICINA_IA_DIR, relativePath);
-    if (filePath !== OFICINA_IA_DIR && !filePath.startsWith(OFICINA_IA_DIR + path.sep)) {
-      return res.status(403).end();
-    }
-    fs.access(filePath, fs.constants.R_OK, (err) => {
-      const finalPath = err ? path.join(OFICINA_IA_DIR, 'index.html') : filePath;
-      res.setHeader('Content-Type', OFICINA_IA_MIME[path.extname(finalPath)] || 'application/octet-stream');
-      res.sendFile(finalPath);
-    });
+    const suffix = req.params[0] || '/';
+    const queryIndex = req.url.indexOf('?');
+    const query = queryIndex === -1 ? '' : req.url.slice(queryIndex);
+    const targetUrl = OFICINA_IA_ORIGIN + suffix + query;
+
+    https
+      .get(targetUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; TalitaNerisProxy/1.0)' } }, (proxyRes) => {
+        res.status(proxyRes.statusCode || 502);
+        const contentType = proxyRes.headers['content-type'];
+        if (contentType) res.setHeader('Content-Type', contentType);
+        proxyRes.pipe(res);
+      })
+      .on('error', (err) => {
+        console.error('Erro no proxy /oficina-ia:', err.message);
+        res.status(502).send('Não foi possível carregar a página da Oficina IA no momento.');
+      });
   });
 
   receiver.router.get('/curadoria/api', async (req, res) => {
