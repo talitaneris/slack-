@@ -92,7 +92,7 @@ function formPage({ error } = {}) {
       <div class="field"><label for="email">E-mail</label><input id="email" name="email" type="email" required></div>
       <div class="field"><label for="telefone">Telefone / WhatsApp</label><input id="telefone" name="telefone" type="tel" required></div>
       <div class="field"><label for="negocio">Nome do negócio</label><input id="negocio" name="negocio" type="text" required></div>
-      <div class="field"><label for="segmento">Segmento do negócio</label><input id="segmento" name="segmento" type="text" placeholder="Ex: moda, consultoria, estética, serviços..." required></div>
+      <div class="field"><label for="segmento">Segmento do negócio</label><input id="segmento" name="segmento" type="text" placeholder="Ex: transporte, moda, consultoria, estética, serviços..." required></div>
       <div class="field"><label for="porte">Tamanho da equipe e/ou faturamento aproximado</label><input id="porte" name="porte" type="text" placeholder="Ex: só eu, 3 pessoas, R$ 20 mil/mês..." required></div>
       <div class="field">
         <label for="usaIA">Já usa IA no negócio?</label>
