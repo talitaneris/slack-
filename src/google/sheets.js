@@ -22,11 +22,11 @@ function getAuth() {
     return null;
   }
   const auth = new google.auth.OAuth2(
-    GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET,
+    GOOGLE_CLIENT_ID.trim(),
+    GOOGLE_CLIENT_SECRET.trim(),
     process.env.GOOGLE_REDIRECT_URI || 'https://slack-soab.onrender.com/google/callback'
   );
-  auth.setCredentials({ refresh_token: GOOGLE_REFRESH_TOKEN });
+  auth.setCredentials({ refresh_token: GOOGLE_REFRESH_TOKEN.trim() });
   return auth;
 }
 
