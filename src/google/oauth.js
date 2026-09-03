@@ -99,13 +99,21 @@ function registerGoogleOAuth(receiver, logger = console) {
         ));
       }
 
+      const safeToken = String(tokens.refresh_token)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+
       res.send(renderHtml(
         'Google autorizado — Calendar + YouTube + Sheets',
-        `<p>Copie estes valores para o Render:</p>
-<pre>GOOGLE_REFRESH_TOKEN=${tokens.refresh_token}
-GOOGLE_CALENDAR_ID=primary
-YOUTUBE_REFRESH_TOKEN=${tokens.refresh_token}</pre>
-<p><strong>O mesmo token cobre Calendar, YouTube e Sheets.</strong> Salve os três e faca redeploy.</p>`
+        `<p>Clique no campo abaixo, selecione tudo (Ctrl+A ou Cmd+A) e copie. É <strong>só o token</strong>, sem nada mais na frente:</p>
+<input type="text" readonly value="${safeToken}" onclick="this.select()" style="width:100%; box-sizing:border-box; font-family:monospace; font-size:14px; padding:12px; margin:12px 0;" />
+<p>No Render, cole esse valor (e só esse valor, sem espaços antes ou depois) no campo de valor destas duas variáveis:</p>
+<pre>GOOGLE_REFRESH_TOKEN
+YOUTUBE_REFRESH_TOKEN</pre>
+<p>(A variável <code>GOOGLE_CALENDAR_ID</code> já deve estar como <code>primary</code> — não precisa mexer nela.)</p>
+<p><strong>O mesmo token cobre Calendar, YouTube e Sheets.</strong> Salve e faça redeploy.</p>`
       ));
     } catch (err) {
       logger.error('Erro no callback Google OAuth:', err.message);
