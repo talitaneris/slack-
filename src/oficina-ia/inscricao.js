@@ -170,7 +170,7 @@ function registerOficinaIaInscricao(receiver, logger = console) {
     } catch (err) {
       logger.error('Erro ao registrar inscrição da Oficina IA:', err.message);
       res.status(500).send(formPage({
-        error: 'Não conseguimos salvar sua inscrição agora. Tente de novo em alguns minutos ou fale no WhatsApp.',
+        error: `Não conseguimos salvar sua inscrição agora. Tente de novo em alguns minutos ou fale no WhatsApp. (Detalhe técnico temporário: ${err.message})`,
       }));
     }
   });
