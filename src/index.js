@@ -13,6 +13,7 @@ require('dotenv').config();
   const { registerGoogleOAuth } = require('./google/oauth');
   const { registerZoomWebhook } = require('./webhooks/zoom');
   const { registerOficinaIaInscricao } = require('./oficina-ia/inscricao');
+  const { registerContatoRedirect } = require('./contato');
    
   // Validação das variáveis de ambiente obrigatórias                                                            
   const REQUIRED_ENV = ['SLACK_BOT_TOKEN', 'SLACK_SIGNING_SECRET', 'ANTHROPIC_API_KEY'];
@@ -36,7 +37,10 @@ require('dotenv').config();
   // Curadoria — site de notícias                                                                                
   receiver.router.get('/curadoria', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/curadoria.html'));                                              
-  });                                                       
+  });
+
+  // Link da bio: /contato e /contato/ abrem o WhatsApp.
+  registerContatoRedirect(receiver);
 
   // Escritório virtual — visualização dos agentes
   receiver.router.get('/escritorio', (req, res) => {
