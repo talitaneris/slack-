@@ -494,7 +494,7 @@
     const total = Object.values(data.data || {}).reduce((s, arr) => s + arr.length, 0);
     document.getElementById('stat-artigos').textContent = total;
     document.getElementById('stat-categorias').textContent = data.categories?.length || 0;
-    document.getElementById('stat-fontes').textContent = FONTES_TOTAL + '+';
+    document.getElementById('stat-fontes').textContent = data.sourceCount || FONTES_TOTAL;
   }
 
   function renderTabs(categories, data) {

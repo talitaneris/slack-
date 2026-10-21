@@ -831,9 +831,17 @@ ${milestones}`;
         return `*${i + 1}. ${p.titulo}* — _${p.fonte}_\n→ *ICP:* ${p.relevancia}\n→ *Ângulo Talita:* ${p.angulo}\n→ *Hook pronto:* "${p.hook}"`;
       }).join('\n\n');
 
+      const dataHoje = new Date().toLocaleDateString('pt-BR');
+      const reserva = pautas.every((p) => p.fallback)
+        ? '\n_A IA não respondeu nesta rodada. Estas pautas são um rascunho a partir das notícias do dia — revise o ângulo antes de usar._\n'
+        : '';
+      const texto = reserva
+        ? `*People* — Pautas quentes de hoje (${dataHoje})\n${reserva}\nUse como repertório, não como texto pronto.\n\n${linhas}\n\nVer todas: https://slack-soab.onrender.com/curadoria`
+        : `*People* — Pautas quentes de hoje (${dataHoje})\n\nUse como repertório, não como texto pronto.\n\n${linhas}\n\nVer todas: https://slack-soab.onrender.com/curadoria`;
+
       await slackClient.chat.postMessage({
         channel: CHANNELS.marketing,
-        text: formatForSlack(`*People* — Pautas quentes de hoje (${new Date().toLocaleDateString('pt-BR')})\n\nUse como repertório, não como texto pronto.\n\n${linhas}\n\nVer todas: https://slack-soab.onrender.com/curadoria`),
+        text: formatForSlack(texto),
       });
       logger.info('✅ Pautas enviadas para #marketing');
     } catch (err) {

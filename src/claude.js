@@ -47,4 +47,22 @@ async function callClaudeFast(systemPrompt, userMessage, maxTokens = 300) {
   return response.content[0].text;
 }
 
-module.exports = { callClaude, callClaudeWithHistory, callClaudeFast };
+// Curadoria: devolve o texto e o motivo de parada, sem retentativa, para cair no fallback rápido.
+async function callClaudeFastDetailed(systemPrompt, userMessage, maxTokens = 300) {
+  const response = await client.messages.create({
+    model: MODEL_FAST,
+    max_tokens: maxTokens,
+    system: systemPrompt,
+    messages: [
+      { role: 'user', content: userMessage },
+    ],
+  }, { timeout: 20000, maxRetries: 0 });
+  const text = (response.content || [])
+    .filter((block) => block && block.type === 'text' && block.text)
+    .map((block) => block.text)
+    .join('\n')
+    .trim();
+  return { text, stopReason: response.stop_reason || '' };
+}
+
+module.exports = { callClaude, callClaudeWithHistory, callClaudeFast, callClaudeFastDetailed };
